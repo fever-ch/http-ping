@@ -37,3 +37,14 @@ changelog:
       - '^gitignore:'
       - '^goreleaser:'
       - '^workflows:'
+dockers:
+  - image_templates:
+      - "docker.io/feverch/http-ping:{{ .Tag }}"
+      - "docker.io/feverch/http-ping:v{{ .Major }}"
+      - "docker.io/feverch/http-ping:v{{ .Major }}.{{ .Minor }}"
+      - "docker.io/feverch/http-ping:latest"
+      - "ghcr.io/fever-ch/http-ping:{{ .Tag }}"
+      - "ghcr.io/fever-ch/http-ping:v{{ .Major }}"
+      - "ghcr.io/fever-ch/http-ping:v{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/fever-ch/http-ping:latest"
+    dockerfile: Dockerfile.goreleaser

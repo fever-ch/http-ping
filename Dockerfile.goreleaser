@@ -1,0 +1,3 @@
+FROM gcr.io/distroless/static
+COPY http-ping /
+ENTRYPOINT ["/http-ping"]
