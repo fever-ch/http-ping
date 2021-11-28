@@ -22,6 +22,20 @@ type cmdConfig struct {
 	count int64
 
 	interval time.Duration
+
+	verbose bool
+
+	quiet bool
+}
+
+func (c *cmdConfig) LogLevel() int8 {
+	if c.verbose {
+		return 2
+	}
+	if c.quiet {
+		return 0
+	}
+	return 1
 }
 
 func (c *cmdConfig) Method() string {

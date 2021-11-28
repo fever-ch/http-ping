@@ -14,4 +14,5 @@ type Config interface {
 	UserAgent() string
 	Wait() time.Duration
 	KeepAlive() bool
+	LogLevel() int8
 }

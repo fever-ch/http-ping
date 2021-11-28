@@ -37,6 +37,10 @@ func prepareRootCmd() *cobra.Command {
 				return errors.New("IPv4 and IPv6 cannot be enforced simultaneously")
 			}
 
+			if config.quiet && config.verbose {
+				return errors.New("quiet and verbose cannot be enforced simultaneously")
+			}
+
 			if config.count <= 0 {
 				return fmt.Errorf("invalid count of requests to be sent `%d'", config.count)
 			}
@@ -72,8 +76,11 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().DurationVarP(&config.interval, "interval", "i", 1*time.Second, "define the wait time between each request")
 
 	rootCmd.Flags().Int64VarP(&config.count, "count", "c", math.MaxInt, "define the number of request to be sent")
-
 	rootCmd.Flag("count").DefValue = "unlimited"
+
+	rootCmd.Flags().BoolVarP(&config.verbose, "verbose", "v", false, "Print more details")
+
+	rootCmd.Flags().BoolVarP(&config.quiet, "quiet", "q", false, "Print less details")
 
 	return rootCmd
 }

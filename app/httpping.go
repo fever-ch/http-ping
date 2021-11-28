@@ -35,11 +35,15 @@ func HttpPing(config Config) {
 	for a := int64(0); a < config.Count() && !sh.Triggered(); a++ {
 		attempts++
 		if measure, err := client.DoMeasure(); err == nil {
-			fmt.Printf("%4d: %s\n", a, measure)
+			if config.LogLevel() >= 1 {
+				fmt.Printf("%4d: %s\n", a, measure)
+			}
 			latencies = append(latencies, measure.Duration)
 		} else {
 			failures++
-			fmt.Printf("%4d: Request timeout\n", a)
+			if config.LogLevel() >= 1 {
+				fmt.Printf("%4d: Request timeout\n", a)
+			}
 		}
 		if a < config.Count() {
 			sh.Sleep(config.Interval())
