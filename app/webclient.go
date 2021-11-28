@@ -22,12 +22,13 @@ func (webClient *webClient) resolve(host string) (*net.IPAddr, error) {
 }
 
 type webClient struct {
-	httpClient *http.Client
-	reused     bool
-	ipAddr     *net.IPAddr
-	config     Config
-	url        *url.URL
-	dialCtx    func(ctx context.Context, network, addr string) (net.Conn, error)
+	connCounter *ConnCounter
+	httpClient  *http.Client
+	reused      bool
+	ipAddr      *net.IPAddr
+	config      Config
+	url         *url.URL
+	dialCtx     func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
 func (webClient *webClient) resetHttpClient() {
@@ -53,7 +54,7 @@ func (webClient *webClient) resetHttpClient() {
 // NewWebClient builds a new instance of webClient which will provides functions for Http-Ping
 func NewWebClient(config Config) (*webClient, error) {
 
-	webClient := webClient{config: config}
+	webClient := webClient{config: config, connCounter: NewConnCounter()}
 	webClient.url, _ = url.Parse(config.Target())
 
 	ipAddr, err := webClient.resolve(webClient.url.Hostname())
@@ -73,7 +74,11 @@ func NewWebClient(config Config) (*webClient, error) {
 			port = portMap[webClient.url.Scheme]
 		}
 
-		return dialer.DialContext(ctx, network, fmt.Sprintf("[%s]:%s", ipAddr.IP.String(), port))
+		conn, err := dialer.DialContext(ctx, network, fmt.Sprintf("[%s]:%s", ipAddr.IP.String(), port))
+		if err != nil {
+			return conn, err
+		}
+		return webClient.connCounter.Bind(conn), nil
 	}
 
 	webClient.resetHttpClient()
