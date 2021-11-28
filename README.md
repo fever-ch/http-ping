@@ -1,5 +1,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/fever-ch/http-ping)](https://goreportcard.com/report/github.com/fever-ch/http-ping)
 [![pr/push checks](https://github.com/fever-ch/http-ping/actions/workflows/continuous-integration.yml/badge.svg)](https://github.com/fever-ch/http-ping/actions/workflows/continuous-integration.yml)
+[![MIT license](https://img.shields.io/badge/license-Apache-brightgreen.svg)](https://opensource.org/licenses/Apache-2.0)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/fever-ch/http-ping)
 
 # Http-Ping
 
@@ -21,9 +23,10 @@ This software has been reported to work well on:
 
 ## Usage
 
-Simply type `http-ping -h`
+Simply type `http-ping -h` to get the list of available commands
 
 ```
+shell> http-ping -h
 An utility which evaluates the latency of HTTP(S) requests
 
 Usage:
@@ -37,8 +40,19 @@ Flags:
   -4, --ipv4                force IPv4 resolution for dual-stacked sites
   -6, --ipv6                force IPv6 resolution for dual-stacked sites
   -r, --reset-connection    reset connection between requests; ignores keep-alive
-      --user-agent string   define a custom user-agent (default "HttpPing/0.1.0 (https://github.com/rbarazzutti/http-ping)")
+      --user-agent string   define a custom user-agent (default "HttpPing/devel (https://github.com/rbarazzutti/http-ping)")
   -v, --version             version for http-ping
   -w, --wait duration       define the time for a response before timing out (default 1s)
 
 ```
+Measure the latency with the Google Cloud Zurich region:
+```
+http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping
+```
+
+## Use with Docker
+```shell
+docker run --rm feverch/http-ping -h
+```
+
+Note: images are published as `feverch/http-ping` (Central Docker registry) or `ghcr.io/fever-ch/http-ping` (Github Container registry)
