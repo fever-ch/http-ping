@@ -78,9 +78,9 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().Int64VarP(&config.count, "count", "c", math.MaxInt, "define the number of request to be sent")
 	rootCmd.Flag("count").DefValue = "unlimited"
 
-	rootCmd.Flags().BoolVarP(&config.verbose, "verbose", "v", false, "Print more details")
+	rootCmd.Flags().BoolVarP(&config.verbose, "verbose", "v", false, "print more details")
 
-	rootCmd.Flags().BoolVarP(&config.quiet, "quiet", "q", false, "Print less details")
+	rootCmd.Flags().BoolVarP(&config.quiet, "quiet", "q", false, "print less details")
 
 	return rootCmd
 }

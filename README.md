@@ -39,11 +39,12 @@ Flags:
   -i, --interval duration   define the wait time between each request (default 1s)
   -4, --ipv4                force IPv4 resolution for dual-stacked sites
   -6, --ipv6                force IPv6 resolution for dual-stacked sites
+  -q, --quiet               print less details
   -r, --reset-connection    reset connection between requests; ignores keep-alive
-      --user-agent string   define a custom user-agent (default "HttpPing/devel (https://github.com/rbarazzutti/http-ping)")
-  -v, --version             version for http-ping
+      --user-agent string   define a custom user-agent (default "Http-Ping/(devel) (https://github.com/fever-ch/http-ping)")
+  -v, --verbose             print more details
+      --version             version for http-ping
   -w, --wait duration       define the time for a response before timing out (default 1s)
-
 ```
 Measure the latency with the Google Cloud Zurich region:
 ```
