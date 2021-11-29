@@ -2,9 +2,11 @@ package app
 
 import (
 	"net"
+	"sync/atomic"
 	"time"
 )
 
+// ConnCounter contains the counters to all the connections which might be bound to it (bind)
 type ConnCounter struct {
 	in  int64
 	out int64
@@ -15,50 +17,64 @@ func NewConnCounter() *ConnCounter {
 	return &ConnCounter{0, 0}
 }
 
+// Bind function builds a proxy which will count all the I/O done to a connection
 func (cc *ConnCounter) Bind(conn net.Conn) net.Conn {
-	return &ConnCounterInstance{counter: cc, innerConn: conn}
+	return &connCounterInstance{counter: cc, innerConn: conn}
 }
 
-type ConnCounterInstance struct {
+type connCounterInstance struct {
 	counter   *ConnCounter
 	innerConn net.Conn
 }
 
-func (c *ConnCounterInstance) Read(b []byte) (int, error) {
+// Read behaves is a proxy to the actual conn.Read (counts reads)
+func (c *connCounterInstance) Read(b []byte) (int, error) {
 	n, err := c.innerConn.Read(b)
 	if err == nil {
-		c.counter.in += int64(n)
+		atomic.AddInt64(&c.counter.in, int64(n))
 	}
 	return n, err
 }
 
-func (c *ConnCounterInstance) Write(b []byte) (int, error) {
+// Write behaves is a proxy to the actual conn.Write (counts writes)
+func (c *connCounterInstance) Write(b []byte) (int, error) {
 	n, err := c.innerConn.Write(b)
 	if err == nil {
-		c.counter.out += int64(n)
+		atomic.AddInt64(&c.counter.out, int64(n))
 	}
 	return n, err
 }
 
-func (c *ConnCounterInstance) Close() error {
+// Close behaves is a proxy to the actual conn.Close
+func (c *connCounterInstance) Close() error {
 	return c.innerConn.Close()
 }
 
-func (c *ConnCounterInstance) LocalAddr() net.Addr {
+// LocalAddr behaves is a proxy to the actual conn.LocalAddr
+func (c *connCounterInstance) LocalAddr() net.Addr {
 	return c.innerConn.LocalAddr()
 }
 
-func (c *ConnCounterInstance) RemoteAddr() net.Addr {
+// RemoteAddr behaves is a proxy to the actual conn.RemoteAddr
+func (c *connCounterInstance) RemoteAddr() net.Addr {
 	return c.innerConn.LocalAddr()
 }
 
-func (c *ConnCounterInstance) SetDeadline(t time.Time) error {
+// SetDeadline behaves is a proxy to the actual conn.SetDeadline
+func (c *connCounterInstance) SetDeadline(t time.Time) error {
 	return c.innerConn.SetDeadline(t)
 }
-func (c *ConnCounterInstance) SetReadDeadline(t time.Time) error {
+
+// SetReadDeadline behaves is a proxy to the actual conn.SetReadDeadline
+func (c *connCounterInstance) SetReadDeadline(t time.Time) error {
 	return c.innerConn.SetReadDeadline(t)
 }
 
-func (c *ConnCounterInstance) SetWriteDeadline(t time.Time) error {
+// SetWriteDeadline behaves is a proxy to the actual conn.SetWriteDeadline
+func (c *connCounterInstance) SetWriteDeadline(t time.Time) error {
 	return c.innerConn.SetWriteDeadline(t)
+}
+
+func (cc *ConnCounter) delta() (int64, int64) {
+	return atomic.SwapInt64(&cc.in, 0), atomic.SwapInt64(&cc.out, 0)
 }

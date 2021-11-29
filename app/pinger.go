@@ -10,6 +10,8 @@ type Answer struct {
 	Duration     time.Duration
 	StatusCode   int
 	Bytes        int64
+	InBytes      int64
+	OutBytes     int64
 	SocketReused bool
 }
 

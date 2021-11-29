@@ -35,8 +35,10 @@ func HttpPing(config Config) {
 	for a := int64(0); a < config.Count() && !sh.Triggered(); a++ {
 		attempts++
 		if measure, err := client.DoMeasure(); err == nil {
-			if config.LogLevel() >= 1 {
-				fmt.Printf("%4d: %s\n", a, measure)
+			if config.LogLevel() == 1 {
+				fmt.Printf("%4d: code=%d size=%d time=%.3f ms\n", a, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
+			} else if config.LogLevel() == 2 {
+				fmt.Printf("%4d: code=%d conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", a, measure.StatusCode, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
 			}
 			latencies = append(latencies, measure.Duration)
 		} else {

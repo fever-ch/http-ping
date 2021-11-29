@@ -32,7 +32,6 @@ type webClient struct {
 }
 
 func (webClient *webClient) resetHttpClient() {
-
 	webClient.httpClient = &http.Client{
 		Timeout: webClient.config.Wait(),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -131,10 +130,14 @@ func (webClient *webClient) DoMeasure() (*Answer, error) {
 	_ = res.Body.Close()
 	var d = time.Since(start)
 
+	in, out := webClient.connCounter.delta()
+
 	return &Answer{
 		Duration:     d,
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
+		InBytes:      in,
+		OutBytes:     out,
 		SocketReused: webClient.reused,
 	}, nil
 
