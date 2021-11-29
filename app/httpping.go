@@ -21,7 +21,7 @@ func HttpPing(config Config) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("HTTP-PING %s (%s) %s\n", u.String(), client.ipAddr.IP, config.Method())
+	fmt.Printf("HTTP-PING %s (%s) %s\n", u.String(), client.connTarget, config.Method())
 
 	var latencies []time.Duration
 
@@ -52,7 +52,7 @@ func HttpPing(config Config) {
 		}
 	}
 
-	fmt.Printf("\n--- %s (%s) ping statistics ---\n", u.String(), client.ipAddr.IP)
+	fmt.Printf("\n--- %s (%s) ping statistics ---\n", u.String(), client.connTarget)
 	var lossRate = float64(0)
 	if len(latencies) > 0 {
 		lossRate = float64(100*failures) / float64(attempts)

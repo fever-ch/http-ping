@@ -15,6 +15,8 @@ type cmdConfig struct {
 
 	userAgent string
 
+	connTarget string
+
 	fullConnection bool
 
 	wait time.Duration
@@ -79,4 +81,11 @@ func (c *cmdConfig) KeepAlive() bool {
 
 func (c *cmdConfig) UserAgent() string {
 	return c.userAgent
+}
+
+func (c *cmdConfig) ConnTarget() *string {
+	if c.connTarget == "" {
+		return nil
+	}
+	return &c.connTarget
 }

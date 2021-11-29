@@ -15,4 +15,5 @@ type Config interface {
 	Wait() time.Duration
 	KeepAlive() bool
 	LogLevel() int8
+	ConnTarget() *string
 }

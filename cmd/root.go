@@ -64,6 +64,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().StringVar(&config.userAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectUrl), "define a custom user-agent")
 
+	rootCmd.Flags().StringVar(&config.connTarget, "conn-target", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
+
 	rootCmd.Flags().BoolVarP(&config.head, "head", "", false, "perform HTTP HEAD requests instead of GETs")
 
 	rootCmd.Flags().BoolVarP(&config.ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")

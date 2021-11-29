@@ -25,7 +25,7 @@ type webClient struct {
 	connCounter *ConnCounter
 	httpClient  *http.Client
 	reused      bool
-	ipAddr      *net.IPAddr
+	connTarget  string
 	config      Config
 	url         *url.URL
 	dialCtx     func(ctx context.Context, network, addr string) (net.Conn, error)
@@ -56,24 +56,28 @@ func NewWebClient(config Config) (*webClient, error) {
 	webClient := webClient{config: config, connCounter: NewConnCounter()}
 	webClient.url, _ = url.Parse(config.Target())
 
-	ipAddr, err := webClient.resolve(webClient.url.Hostname())
+	if config.ConnTarget() == nil {
 
-	if err != nil {
-		return nil, err
-	}
+		ipAddr, err := webClient.resolve(webClient.url.Hostname())
 
-	webClient.ipAddr = ipAddr
-
-	dialer := &net.Dialer{}
-
-	webClient.dialCtx = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		if err != nil {
+			return nil, err
+		}
 
 		var port = webClient.url.Port()
 		if port == "" {
 			port = portMap[webClient.url.Scheme]
 		}
+		webClient.connTarget = fmt.Sprintf("[%s]:%s", ipAddr.IP.String(), port)
+	} else {
+		webClient.connTarget = *config.ConnTarget()
+	}
 
-		conn, err := dialer.DialContext(ctx, network, fmt.Sprintf("[%s]:%s", ipAddr.IP.String(), port))
+	dialer := &net.Dialer{}
+
+	webClient.dialCtx = func(ctx context.Context, network, addr string) (net.Conn, error) {
+
+		conn, err := dialer.DialContext(ctx, network, webClient.connTarget)
 		if err != nil {
 			return conn, err
 		}
