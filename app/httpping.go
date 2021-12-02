@@ -9,15 +9,15 @@ import (
 	"time"
 )
 
-// HttpPing actually does the pinging specified in config
-func HttpPing(config Config) {
+// HTTPPing actually does the pinging specified in config
+func HTTPPing(config Config) {
 
 	u, _ := url.Parse(config.Target())
 
 	client, err := NewWebClient(config)
 
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s (%s)\n", err, config.IpProtocol())
+		_, _ = fmt.Fprintf(os.Stderr, "%s (%s)\n", err, config.IPProtocol())
 		os.Exit(1)
 	}
 
@@ -27,7 +27,7 @@ func HttpPing(config Config) {
 
 	sh := util.NewSignalHandler(os.Interrupt)
 
-	_ = client.DoConnection()
+	_, _ = client.DoMeasure()
 	sh.Sleep(config.Interval())
 
 	attempts, failures := 0, 0

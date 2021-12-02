@@ -27,7 +27,7 @@ Simply type `http-ping -h` to get the list of available commands
 
 ```
 shell> http-ping -h
-An utility which evaluates the latency of HTTP(S) requests
+An utility which evaluates the latency of HTTP/S requests
 
 Usage:
   http-ping [flags] target-URL

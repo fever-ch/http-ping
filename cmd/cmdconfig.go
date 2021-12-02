@@ -65,7 +65,7 @@ func (c *cmdConfig) Count() int64 {
 	return c.count
 }
 
-func (c *cmdConfig) IpProtocol() string {
+func (c *cmdConfig) IPProtocol() string {
 	if c.ipv4 {
 		return "ip4"
 	} else if c.ipv6 {

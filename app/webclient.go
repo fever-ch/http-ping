@@ -17,11 +17,12 @@ var portMap = map[string]string{
 	"https": "443",
 }
 
-func (webClient *webClient) resolve(host string) (*net.IPAddr, error) {
-	return net.ResolveIPAddr(webClient.config.IpProtocol(), host)
+func (webClient *WebClient) resolve(host string) (*net.IPAddr, error) {
+	return net.ResolveIPAddr(webClient.config.IPProtocol(), host)
 }
 
-type webClient struct {
+// WebClient represents an HTTP/S client designed to do performance analysis
+type WebClient struct {
 	connCounter *ConnCounter
 	httpClient  *http.Client
 	reused      bool
@@ -31,7 +32,7 @@ type webClient struct {
 	dialCtx     func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
-func (webClient *webClient) resetHttpClient() {
+func (webClient *WebClient) resetHTTPClient() {
 	webClient.httpClient = &http.Client{
 		Timeout: webClient.config.Wait(),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -50,10 +51,10 @@ func (webClient *webClient) resetHttpClient() {
 	}
 }
 
-// NewWebClient builds a new instance of webClient which will provides functions for Http-Ping
-func NewWebClient(config Config) (*webClient, error) {
+// NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
+func NewWebClient(config Config) (*WebClient, error) {
 
-	webClient := webClient{config: config, connCounter: NewConnCounter()}
+	webClient := WebClient{config: config, connCounter: NewConnCounter()}
 	webClient.url, _ = url.Parse(config.Target())
 
 	if config.ConnTarget() == nil {
@@ -84,23 +85,16 @@ func NewWebClient(config Config) (*webClient, error) {
 		return webClient.connCounter.Bind(conn), nil
 	}
 
-	webClient.resetHttpClient()
+	webClient.resetHTTPClient()
 
 	return &webClient, nil
 }
 
-func (webClient *webClient) DoConnection() error {
-	timeOut := webClient.httpClient.Timeout
-	webClient.httpClient.Timeout = 5 * time.Second
-	_, err := webClient.DoMeasure()
-	webClient.httpClient.Timeout = timeOut
-	return err
-}
-
-func (webClient *webClient) DoMeasure() (*Answer, error) {
+// DoMeasure evaluates the latency to a specific HTTP/S server
+func (webClient *WebClient) DoMeasure() (*Answer, error) {
 	closing := func() {
 		if !webClient.config.KeepAlive() {
-			webClient.resetHttpClient()
+			webClient.resetHTTPClient()
 		}
 	}
 

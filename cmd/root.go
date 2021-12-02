@@ -26,8 +26,8 @@ func prepareRootCmd() *cobra.Command {
 
 		Use: "http-ping [flags] target-URL",
 
-		Short: "An utility which evaluates the latency of HTTP(S) requests",
-		Long:  `An utility which evaluates the latency of HTTP(S) requests`,
+		Short: "An utility which evaluates the latency of HTTP/S requests",
+		Long:  `An utility which evaluates the latency of HTTP/S requests`,
 
 		Version: app.Version,
 
@@ -56,13 +56,13 @@ func prepareRootCmd() *cobra.Command {
 			}
 
 			config.target = args[0]
-			app.HttpPing(&config)
+			app.HTTPPing(&config)
 
 			return nil
 		},
 	}
 
-	rootCmd.Flags().StringVar(&config.userAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectUrl), "define a custom user-agent")
+	rootCmd.Flags().StringVar(&config.userAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectURL), "define a custom user-agent")
 
 	rootCmd.Flags().StringVar(&config.connTarget, "conn-target", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
 

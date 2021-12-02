@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-// Config defines the multiple parameters which can be sent to HttpPing
+// Config defines the multiple parameters which can be sent to HTTPPing
 type Config interface {
-	IpProtocol() string
+	IPProtocol() string
 	Interval() time.Duration
 	Count() int64
 	Target() string
