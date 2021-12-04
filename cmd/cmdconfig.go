@@ -28,6 +28,8 @@ type cmdConfig struct {
 	verbose bool
 
 	quiet bool
+
+	noCheckCertificate bool
 }
 
 func (c *cmdConfig) LogLevel() int8 {
@@ -88,4 +90,8 @@ func (c *cmdConfig) ConnTarget() *string {
 		return nil
 	}
 	return &c.connTarget
+}
+
+func (c *cmdConfig) NoCheckCertificate() bool {
+	return c.noCheckCertificate
 }

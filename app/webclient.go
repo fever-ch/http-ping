@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -48,6 +49,7 @@ func (webClient *WebClient) resetHTTPClient() {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: webClient.config.NoCheckCertificate()},
 	}
 }
 
@@ -128,7 +130,7 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 	_ = res.Body.Close()
 	var d = time.Since(start)
 
-	in, out := webClient.connCounter.delta()
+	in, out := webClient.connCounter.DeltaAndReset()
 
 	return &Answer{
 		Duration:     d,

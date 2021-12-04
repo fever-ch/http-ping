@@ -84,5 +84,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.quiet, "quiet", "q", false, "print less details")
 
+	rootCmd.Flags().BoolVarP(&config.noCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
+
 	return rootCmd
 }

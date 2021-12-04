@@ -75,6 +75,7 @@ func (c *connCounterInstance) SetWriteDeadline(t time.Time) error {
 	return c.innerConn.SetWriteDeadline(t)
 }
 
-func (cc *ConnCounter) delta() (int64, int64) {
+// DeltaAndReset retrieve the counters and reset them atomically
+func (cc *ConnCounter) DeltaAndReset() (int64, int64) {
 	return atomic.SwapInt64(&cc.in, 0), atomic.SwapInt64(&cc.out, 0)
 }

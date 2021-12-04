@@ -16,4 +16,5 @@ type Config interface {
 	KeepAlive() bool
 	LogLevel() int8
 	ConnTarget() *string
+	NoCheckCertificate() bool
 }
