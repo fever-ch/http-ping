@@ -69,6 +69,7 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().BoolVarP(&config.head, "head", "", false, "perform HTTP HEAD requests instead of GETs")
 
 	rootCmd.Flags().BoolVarP(&config.ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")
+
 	rootCmd.Flags().BoolVarP(&config.ipv6, "ipv6", "6", false, "force IPv6 resolution for dual-stacked sites")
 
 	rootCmd.Flags().BoolVarP(&config.fullConnection, "reset-connection", "r", false, "reset connection between requests; ignores keep-alive")
@@ -78,6 +79,7 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().DurationVarP(&config.interval, "interval", "i", 1*time.Second, "define the wait time between each request")
 
 	rootCmd.Flags().Int64VarP(&config.count, "count", "c", math.MaxInt, "define the number of request to be sent")
+
 	rootCmd.Flag("count").DefValue = "unlimited"
 
 	rootCmd.Flags().BoolVarP(&config.verbose, "verbose", "v", false, "print more details")
@@ -85,6 +87,8 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().BoolVarP(&config.quiet, "quiet", "q", false, "print less details")
 
 	rootCmd.Flags().BoolVarP(&config.noCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
+
+	rootCmd.Flags().StringArrayVarP(&config.cookies, "cookie", "C", []string{}, "add one or more cookies, in the form name:value")
 
 	return rootCmd
 }

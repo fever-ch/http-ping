@@ -113,6 +113,10 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 
 	req = req.WithContext(traceCtx)
 
+	for _, c := range webClient.config.Cookies() {
+		req.AddCookie(&http.Cookie{Name: c.Name, Value: c.Value})
+	}
+
 	start := time.Now()
 
 	req.Header.Set("User-Agent", webClient.config.UserAgent())

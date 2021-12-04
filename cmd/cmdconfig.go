@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/fever-ch/http-ping/app"
 	"regexp"
 	"time"
 )
@@ -30,6 +31,8 @@ type cmdConfig struct {
 	quiet bool
 
 	noCheckCertificate bool
+
+	cookies []string
 }
 
 func (c *cmdConfig) LogLevel() int8 {
@@ -47,6 +50,15 @@ func (c *cmdConfig) Method() string {
 		return "HEAD"
 	}
 	return "GET"
+}
+
+func splitPair(str string) (string, string) {
+	r := regexp.MustCompile("^([^:]*):(.*)$")
+	e := r.FindStringSubmatch(str)
+	if len(e) == 3 {
+		return e[1], e[2]
+	}
+	return "", ""
 }
 
 func (c *cmdConfig) Target() string {
@@ -94,4 +106,15 @@ func (c *cmdConfig) ConnTarget() *string {
 
 func (c *cmdConfig) NoCheckCertificate() bool {
 	return c.noCheckCertificate
+}
+
+func (c *cmdConfig) Cookies() []app.Cookie {
+	var cookies []app.Cookie
+	for _, cookie := range c.cookies {
+		n, v := splitPair(cookie)
+		if n != "" {
+			cookies = append(cookies, app.Cookie{Name: n, Value: v})
+		}
+	}
+	return cookies
 }
