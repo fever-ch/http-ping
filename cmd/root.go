@@ -90,5 +90,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().StringArrayVarP(&config.cookies, "cookie", "C", []string{}, "add one or more cookies, in the form name:value")
 
+	rootCmd.Flags().StringArrayVarP(&config.parameters, "parameter", "p", []string{}, "add one or more parameters, in the form name:value")
+
 	return rootCmd
 }

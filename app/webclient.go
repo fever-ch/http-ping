@@ -117,6 +117,15 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 		req.AddCookie(&http.Cookie{Name: c.Name, Value: c.Value})
 	}
 
+	if len(webClient.config.Parameters()) > 0 {
+		q := req.URL.Query()
+
+		for _, c := range webClient.config.Parameters() {
+			q.Add(c.Name, c.Value)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
 	start := time.Now()
 
 	req.Header.Set("User-Agent", webClient.config.UserAgent())

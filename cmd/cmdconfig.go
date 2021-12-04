@@ -33,6 +33,8 @@ type cmdConfig struct {
 	noCheckCertificate bool
 
 	cookies []string
+
+	parameters []string
 }
 
 func (c *cmdConfig) LogLevel() int8 {
@@ -117,4 +119,15 @@ func (c *cmdConfig) Cookies() []app.Cookie {
 		}
 	}
 	return cookies
+}
+
+func (c *cmdConfig) Parameters() []app.Parameter {
+	var parameters []app.Parameter
+	for _, parameter := range c.parameters {
+		n, v := splitPair(parameter)
+		if n != "" {
+			parameters = append(parameters, app.Parameter{Name: n, Value: v})
+		}
+	}
+	return parameters
 }

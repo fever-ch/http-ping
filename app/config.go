@@ -12,6 +12,9 @@ type pair struct {
 // Cookie is a data structure which represents the basic info about a cookie (Name and Value)
 type Cookie pair
 
+// Parameter is a data structure which represents the basic info about a cookie (Name and Value)
+type Parameter pair
+
 // Config defines the multiple parameters which can be sent to HTTPPing
 type Config interface {
 	IPProtocol() string
@@ -26,4 +29,5 @@ type Config interface {
 	ConnTarget() *string
 	NoCheckCertificate() bool
 	Cookies() []Cookie
+	Parameters() []Parameter
 }
