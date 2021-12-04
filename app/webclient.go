@@ -31,26 +31,8 @@ type WebClient struct {
 	config      Config
 	url         *url.URL
 	dialCtx     func(ctx context.Context, network, addr string) (net.Conn, error)
-}
 
-func (webClient *WebClient) resetHTTPClient() {
-	webClient.httpClient = &http.Client{
-		Timeout: webClient.config.Wait(),
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	webClient.httpClient.Transport = &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           webClient.dialCtx,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: webClient.config.NoCheckCertificate()},
-	}
+	cookies []*http.Cookie
 }
 
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
@@ -58,7 +40,7 @@ func NewWebClient(config Config) (*WebClient, error) {
 
 	webClient := WebClient{config: config, connCounter: NewConnCounter()}
 	webClient.url, _ = url.Parse(config.Target())
-
+	//webClient.httpClient.
 	if config.ConnTarget() == nil {
 
 		ipAddr, err := webClient.resolve(webClient.url.Hostname())
@@ -87,20 +69,34 @@ func NewWebClient(config Config) (*WebClient, error) {
 		return webClient.connCounter.Bind(conn), nil
 	}
 
-	webClient.resetHTTPClient()
+	webClient.httpClient = &http.Client{
+		Timeout: webClient.config.Wait(),
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	webClient.httpClient.Transport = &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           webClient.dialCtx,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		DisableKeepAlives:     !webClient.config.KeepAlive(),
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: webClient.config.NoCheckCertificate()},
+	}
+
+	for _, c := range webClient.config.Cookies() {
+		webClient.cookies = append(webClient.cookies, &http.Cookie{Name: c.Name, Value: c.Value})
+	}
 
 	return &webClient, nil
 }
 
 // DoMeasure evaluates the latency to a specific HTTP/S server
 func (webClient *WebClient) DoMeasure() (*Answer, error) {
-	closing := func() {
-		if !webClient.config.KeepAlive() {
-			webClient.resetHTTPClient()
-		}
-	}
-
-	defer closing()
 
 	req, _ := http.NewRequest(webClient.config.Method(), webClient.config.Target(), nil)
 
@@ -113,8 +109,8 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 
 	req = req.WithContext(traceCtx)
 
-	for _, c := range webClient.config.Cookies() {
-		req.AddCookie(&http.Cookie{Name: c.Name, Value: c.Value})
+	for _, c := range webClient.cookies {
+		req.AddCookie(c)
 	}
 
 	if len(webClient.config.Parameters()) > 0 {
@@ -142,6 +138,8 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 
 	_ = res.Body.Close()
 	var d = time.Since(start)
+
+	webClient.cookies = res.Cookies()
 
 	in, out := webClient.connCounter.DeltaAndReset()
 
