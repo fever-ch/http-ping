@@ -64,15 +64,15 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().StringVar(&config.userAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectURL), "define a custom user-agent")
 
-	rootCmd.Flags().StringVar(&config.connTarget, "conn-target", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
+	rootCmd.Flags().StringVarP(&config.connTarget, "conn-target", "", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
 
-	rootCmd.Flags().BoolVarP(&config.head, "head", "", false, "perform HTTP HEAD requests instead of GETs")
+	rootCmd.Flags().BoolVarP(&config.head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
 
 	rootCmd.Flags().BoolVarP(&config.ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")
 
 	rootCmd.Flags().BoolVarP(&config.ipv6, "ipv6", "6", false, "force IPv6 resolution for dual-stacked sites")
 
-	rootCmd.Flags().BoolVarP(&config.fullConnection, "reset-connection", "r", false, "reset connection between requests; ignores keep-alive")
+	rootCmd.Flags().BoolVarP(&config.fullConnection, "disable-keepalive", "K", false, "disable keep-alive feature")
 
 	rootCmd.Flags().DurationVarP(&config.wait, "wait", "w", time.Second, "define the time for a response before timing out")
 
@@ -88,9 +88,9 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.noCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
 
-	rootCmd.Flags().StringArrayVarP(&config.cookies, "cookie", "C", []string{}, "add one or more cookies, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&config.cookies, "cookie", "", []string{}, "add one or more cookies, in the form name:value")
 
-	rootCmd.Flags().StringArrayVarP(&config.parameters, "parameter", "p", []string{}, "add one or more parameters, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&config.parameters, "parameter", "", []string{}, "add one or more parameters, in the form name:value")
 
 	return rootCmd
 }
