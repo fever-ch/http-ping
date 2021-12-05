@@ -112,8 +112,12 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		req.AddCookie(c)
 	}
 
-	if len(webClient.config.Parameters()) > 0 {
+	if len(webClient.config.Parameters()) > 0 || webClient.config.ExtraParam() {
 		q := req.URL.Query()
+
+		if webClient.config.ExtraParam() {
+			q.Add("extra_parameter_httpping", fmt.Sprintf("%X", time.Now().UnixMicro()))
+		}
 
 		for _, c := range webClient.config.Parameters() {
 			q.Add(c.Name, c.Value)

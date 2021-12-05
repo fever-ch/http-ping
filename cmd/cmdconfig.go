@@ -30,6 +30,8 @@ type cmdConfig struct {
 
 	quiet bool
 
+	extraParam bool
+
 	noCheckCertificate bool
 
 	cookies []string
@@ -136,4 +138,8 @@ func (c *cmdConfig) Parameters() []app.Parameter {
 
 func (c *cmdConfig) IgnoreServerErrors() bool {
 	return c.ignoreServerErrors
+}
+
+func (c *cmdConfig) ExtraParam() bool {
+	return c.extraParam
 }

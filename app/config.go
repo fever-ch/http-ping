@@ -31,4 +31,5 @@ type Config interface {
 	Cookies() []Cookie
 	Parameters() []Parameter
 	IgnoreServerErrors() bool
+	ExtraParam() bool
 }
