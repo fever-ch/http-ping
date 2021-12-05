@@ -96,8 +96,7 @@ func NewWebClient(config Config) (*WebClient, error) {
 }
 
 // DoMeasure evaluates the latency to a specific HTTP/S server
-func (webClient *WebClient) DoMeasure() (*Answer, error) {
-
+func (webClient *WebClient) DoMeasure() *Answer {
 	req, _ := http.NewRequest(webClient.config.Method(), webClient.config.Target(), nil)
 
 	clientTrace := &httptrace.ClientTrace{
@@ -129,11 +128,18 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 	res, err := webClient.httpClient.Do(req)
 
 	if err != nil {
-		return nil, err
+		return &Answer{
+			IsFailure:    true,
+			FailureCause: "Request timeout",
+		}
 	}
+
 	s, err := io.Copy(ioutil.Discard, res.Body)
 	if err != nil {
-		return nil, err
+		return &Answer{
+			IsFailure:    true,
+			FailureCause: "I/O error while reading payload",
+		}
 	}
 
 	_ = res.Body.Close()
@@ -143,6 +149,14 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 
 	in, out := webClient.connCounter.DeltaAndReset()
 
+	failed := false
+	failureCause := ""
+
+	if res.StatusCode/100 == 5 && !webClient.config.IgnoreServerErrors() {
+		failed = true
+		failureCause = "Server-side error"
+	}
+
 	return &Answer{
 		Duration:     d,
 		StatusCode:   res.StatusCode,
@@ -150,6 +164,9 @@ func (webClient *WebClient) DoMeasure() (*Answer, error) {
 		InBytes:      in,
 		OutBytes:     out,
 		SocketReused: webClient.reused,
-	}, nil
+
+		IsFailure:    failed,
+		FailureCause: failureCause,
+	}
 
 }

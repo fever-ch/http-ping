@@ -43,6 +43,7 @@ Flags:
   -i, --interval duration       define the wait time between each request (default 1s)
   -4, --ipv4                    force IPv4 resolution for dual-stacked sites
   -6, --ipv6                    force IPv6 resolution for dual-stacked sites
+      --no-server-error         ignore server errors (5xx), do not handle them as "lost pings"
       --parameter stringArray   add one or more parameters, in the form name:value
   -q, --quiet                   print less details
       --user-agent string       define a custom user-agent (default "Http-Ping/(devel) (https://github.com/fever-ch/http-ping)")

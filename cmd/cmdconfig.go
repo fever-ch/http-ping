@@ -35,6 +35,8 @@ type cmdConfig struct {
 	cookies []string
 
 	parameters []string
+
+	ignoreServerErrors bool
 }
 
 func (c *cmdConfig) LogLevel() int8 {
@@ -130,4 +132,8 @@ func (c *cmdConfig) Parameters() []app.Parameter {
 		}
 	}
 	return parameters
+}
+
+func (c *cmdConfig) IgnoreServerErrors() bool {
+	return c.ignoreServerErrors
 }

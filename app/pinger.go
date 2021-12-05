@@ -13,6 +13,9 @@ type Answer struct {
 	InBytes      int64
 	OutBytes     int64
 	SocketReused bool
+
+	IsFailure    bool
+	FailureCause string
 }
 
 func (a *Answer) String() string {

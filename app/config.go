@@ -30,4 +30,5 @@ type Config interface {
 	NoCheckCertificate() bool
 	Cookies() []Cookie
 	Parameters() []Parameter
+	IgnoreServerErrors() bool
 }

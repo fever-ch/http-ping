@@ -27,14 +27,14 @@ func HTTPPing(config Config) {
 
 	sh := util.NewSignalHandler(os.Interrupt)
 
-	_, _ = client.DoMeasure()
+	_ = client.DoMeasure()
 	sh.Sleep(config.Interval())
 
 	attempts, failures := 0, 0
 
 	for a := int64(0); a < config.Count() && !sh.Triggered(); a++ {
 		attempts++
-		if measure, err := client.DoMeasure(); err == nil {
+		if measure := client.DoMeasure(); !measure.IsFailure {
 			if config.LogLevel() == 1 {
 				fmt.Printf("%4d: code=%d size=%d time=%.3f ms\n", a, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
 			} else if config.LogLevel() == 2 {
@@ -44,7 +44,7 @@ func HTTPPing(config Config) {
 		} else {
 			failures++
 			if config.LogLevel() >= 1 {
-				fmt.Printf("%4d: Request timeout\n", a)
+				fmt.Printf("%4d: %s\n", a, measure.FailureCause)
 			}
 		}
 		if a < config.Count() {

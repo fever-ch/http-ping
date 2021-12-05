@@ -92,5 +92,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().StringArrayVarP(&config.parameters, "parameter", "", []string{}, "add one or more parameters, in the form name:value")
 
+	rootCmd.Flags().BoolVarP(&config.ignoreServerErrors, "no-server-error", "", false, "ignore server errors (5xx), do not handle them as \"lost pings\"")
+
 	return rootCmd
 }
