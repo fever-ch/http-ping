@@ -39,6 +39,7 @@ Flags:
   -K, --disable-keepalive       disable keep-alive feature
   -x, --extra-parameter         extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy
   -H, --head                    perform HTTP HEAD requests instead of GETs
+      --header stringArray      add one or more header, in the form name:value
   -h, --help                    help for http-ping
   -k, --insecure                allow insecure server connections when using SSL
   -i, --interval duration       define the wait time between each request (default 1s)

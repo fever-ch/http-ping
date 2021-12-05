@@ -29,6 +29,8 @@ func prepareRootCmd() *cobra.Command {
 
 	var cookies []string
 
+	var headers []string
+
 	var parameters []string
 
 	var rootCmd = &cobra.Command{
@@ -95,6 +97,13 @@ func prepareRootCmd() *cobra.Command {
 				}
 			}
 
+			for _, header := range headers {
+				n, v := splitPair(header)
+				if n != "" {
+					config.Headers = append(config.Headers, app.Header{Name: n, Value: v})
+				}
+			}
+
 			for _, parameter := range parameters {
 				n, v := splitPair(parameter)
 				if n != "" {
@@ -136,6 +145,8 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().BoolVarP(&config.NoCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
 
 	rootCmd.Flags().StringArrayVarP(&cookies, "cookie", "", []string{}, "add one or more cookies, in the form name:value")
+
+	rootCmd.Flags().StringArrayVarP(&headers, "header", "", []string{}, "add one or more header, in the form name:value")
 
 	rootCmd.Flags().StringArrayVarP(&parameters, "parameter", "", []string{}, "add one or more parameters, in the form name:value")
 

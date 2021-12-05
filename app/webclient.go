@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptrace"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -126,9 +127,16 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		req.URL.RawQuery = q.Encode()
 	}
 
-	start := time.Now()
+	// Host is considered as a special header in net/http, for simplicity we use here a common way to handle both
+	for _, header := range webClient.config.Headers {
+		if strings.ToLower(header.Name) != "host" {
+			req.Header.Set(header.Name, header.Value)
+		} else {
+			req.Host = header.Value
+		}
+	}
 
-	req.Header.Set("User-Agent", webClient.config.UserAgent)
+	start := time.Now()
 
 	res, err := webClient.httpClient.Do(req)
 

@@ -12,7 +12,10 @@ type pair struct {
 // Cookie is a data structure which represents the basic info about a cookie (Name and Value)
 type Cookie pair
 
-// Parameter is a data structure which represents the basic info about a cookie (Name and Value)
+// Header is a data structure which represents the basic info about a HTTP header (Name and Value)
+type Header pair
+
+// Parameter is a data structure which represents a request parameter (Name and Value)
 type Parameter pair
 
 // Config defines the multiple parameters which can be sent to HTTPPing
@@ -29,6 +32,7 @@ type Config struct {
 	ConnTarget         string
 	NoCheckCertificate bool
 	Cookies            []Cookie
+	Headers            []Header
 	Parameters         []Parameter
 	IgnoreServerErrors bool
 	ExtraParam         bool
