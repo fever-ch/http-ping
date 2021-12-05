@@ -80,8 +80,28 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	}
 
 	webClient.httpClient.Transport = &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           webClient.dialCtx,
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dialer := &net.Dialer{}
+			conn, err := dialer.DialContext(ctx, network, webClient.connTarget)
+			if err != nil {
+				return conn, err
+			}
+			return webClient.connCounter.Bind(conn), nil
+		},
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			netDialer := &net.Dialer{}
+
+			tlsDialer := &tls.Dialer{
+				NetDialer: netDialer,
+			}
+			conn, err := tlsDialer.DialContext(ctx, network, addr)
+			if err != nil {
+				return conn, err
+			}
+			return conn, err
+		},
+
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
 		DisableKeepAlives:     webClient.config.DisableKeepAlive,
@@ -118,7 +138,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		q := req.URL.Query()
 
 		if webClient.config.ExtraParam {
-			q.Add("extra_parameter_httpping", fmt.Sprintf("%X", time.Now().UnixMicro()))
+			q.Add("extra_parameter_http_ping", fmt.Sprintf("%X", time.Now().UnixMicro()))
 		}
 
 		for _, c := range webClient.config.Parameters {
@@ -143,7 +163,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	if err != nil {
 		return &Answer{
 			IsFailure:    true,
-			FailureCause: "Request timeout",
+			FailureCause: err.Error(),
 		}
 	}
 

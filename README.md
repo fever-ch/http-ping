@@ -7,10 +7,10 @@
 
 `http-ping` is a free software distributed under the [Apache License 2.0](LICENSE).
 
-This piece of software is similar to the usual [_ping networking utility_](https://en.wikipedia.org/wiki/Ping_(networking_utility)) but instead of working on top of ICMP`, it works on top of
+This piece of software is similar to the usual [_ping networking utility_](https://en.wikipedia.org/wiki/Ping_(networking_utility)) but instead of working on top of ICMP, it works on top of
 HTTP/S.
 
-is a small, free, easy-to-use command line utility that probes a given URL and displays relevant statistics. It is similar to the popular ping utility, but works over HTTP/S instead of ICMP, and with a URL instead of a computer name/IP address. http-ping supports IPv6 addresses.
+Http-Ping is a small, free, easy-to-use command line utility that probes a given URL and displays relevant statistics. It is similar to the popular ping utility, but works over HTTP/S instead of ICMP, and with a URL instead of a computer name/IP address. http-ping supports IPv6 addresses.
 
 ## Platforms
 
@@ -18,7 +18,7 @@ This software is written in [Go](https://go.dev), and should then benefit from t
 
 This software has been reported to work well on:
 - *Linux:* amd64, 386, arm64, arm
-- *Windows:* amd64, 386
+- *Windows:* amd64, 386, arm64
 - *MacOS:* amd64 (Intel Macs), arm64 (Apple Silicon)
 
 ## Usage

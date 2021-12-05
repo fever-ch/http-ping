@@ -3,56 +3,63 @@ package app
 import (
 	"fmt"
 	"github.com/fever-ch/http-ping/stats"
-	"github.com/fever-ch/http-ping/util"
-	"net/url"
 	"os"
+	"os/signal"
 	"time"
 )
 
 // HTTPPing actually does the pinging specified in config
 func HTTPPing(config *Config) {
+	ic := make(chan os.Signal, 1)
 
-	u, _ := url.Parse(config.Target)
+	signal.Notify(ic, os.Interrupt)
 
-	client, err := NewWebClient(config)
+	pinger, err := NewPinger(config)
 
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s (%s)\n", err, config.IPProtocol)
+		fmt.Printf("Error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Printf("HTTP-PING %s (%s) %s\n", u.String(), client.connTarget, config.Method)
+	ch := pinger.Ping()
+
+	fmt.Printf("HTTP-PING %s (%s) %s\n", pinger.client.url.String(), pinger.client.connTarget, config.Method)
 
 	var latencies []time.Duration
-
-	sh := util.NewSignalHandler(os.Interrupt)
-
-	_ = client.DoMeasure()
-	sh.Sleep(config.Interval)
-
 	attempts, failures := 0, 0
 
-	for a := int64(0); a < config.Count && !sh.Triggered(); a++ {
-		attempts++
-		if measure := client.DoMeasure(); !measure.IsFailure {
-			if config.LogLevel == 1 {
-				fmt.Printf("%4d: code=%d size=%d time=%.3f ms\n", a, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
-			} else if config.LogLevel == 2 {
-				fmt.Printf("%4d: code=%d conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", a, measure.StatusCode, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
+	var loop = true
+	for loop {
+		select {
+		case measure := <-ch:
+			{
+				if measure == nil {
+					loop = false
+				} else {
+					if !measure.IsFailure {
+						if config.LogLevel == 1 {
+							fmt.Printf("%4d: code=%d size=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
+						} else if config.LogLevel == 2 {
+							fmt.Printf("%4d: code=%d conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
+						}
+						latencies = append(latencies, measure.Duration)
+					} else {
+						if config.LogLevel >= 1 {
+							fmt.Printf("%4d: %s\n", attempts, measure.FailureCause)
+						}
+						failures++
+					}
+					attempts++
+				}
 			}
-			latencies = append(latencies, measure.Duration)
-		} else {
-			failures++
-			if config.LogLevel >= 1 {
-				fmt.Printf("%4d: %s\n", a, measure.FailureCause)
+		case <-ic:
+			{
+				loop = false
 			}
-		}
-		if a < config.Count {
-			sh.Sleep(config.Interval)
 		}
 	}
 
-	fmt.Printf("\n--- %s (%s) ping statistics ---\n", u.String(), client.connTarget)
+	fmt.Printf("\n--- %s (%s) ping statistics ---\n", pinger.client.url.String(), pinger.client.connTarget)
 	var lossRate = float64(0)
 	if len(latencies) > 0 {
 		lossRate = float64(100*failures) / float64(attempts)
