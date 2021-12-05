@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptrace"
 	"net/url"
 	"time"
@@ -31,8 +32,6 @@ type WebClient struct {
 	config      *Config
 	url         *url.URL
 	dialCtx     func(ctx context.Context, network, addr string) (net.Conn, error)
-
-	cookies []*http.Cookie
 }
 
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
@@ -40,7 +39,7 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 	webClient := WebClient{config: config, connCounter: NewConnCounter()}
 	webClient.url, _ = url.Parse(config.Target)
-	//webClient.httpClient.
+
 	if config.ConnTarget == "" {
 
 		ipAddr, err := webClient.resolve(webClient.url.Hostname())
@@ -69,7 +68,10 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		return webClient.connCounter.Bind(conn), nil
 	}
 
+	jar, _ := cookiejar.New(nil)
+
 	webClient.httpClient = &http.Client{
+		Jar:     jar,
 		Timeout: webClient.config.Wait,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -88,9 +90,12 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: webClient.config.NoCheckCertificate},
 	}
 
+	var cookies []*http.Cookie
 	for _, c := range webClient.config.Cookies {
-		webClient.cookies = append(webClient.cookies, &http.Cookie{Name: c.Name, Value: c.Value})
+		cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})
 	}
+
+	jar.SetCookies(webClient.url, cookies)
 
 	return &webClient, nil
 }
@@ -107,10 +112,6 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	traceCtx := httptrace.WithClientTrace(context.Background(), clientTrace)
 
 	req = req.WithContext(traceCtx)
-
-	for _, c := range webClient.cookies {
-		req.AddCookie(c)
-	}
 
 	if len(webClient.config.Parameters) > 0 || webClient.config.ExtraParam {
 		q := req.URL.Query()
@@ -145,11 +146,8 @@ func (webClient *WebClient) DoMeasure() *Answer {
 			FailureCause: "I/O error while reading payload",
 		}
 	}
-
 	_ = res.Body.Close()
 	var d = time.Since(start)
-
-	webClient.cookies = res.Cookies()
 
 	in, out := webClient.connCounter.DeltaAndReset()
 

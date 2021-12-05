@@ -80,11 +80,11 @@ func prepareRootCmd() *cobra.Command {
 
 			if len(args) == 0 {
 				_ = cmd.Usage()
-				println()
+				cmd.Println()
 				return errors.New("target-URL required")
 			} else if len(args) > 1 {
 				_ = cmd.Usage()
-				println()
+				cmd.Println()
 				return errors.New("too many arguments")
 			}
 
