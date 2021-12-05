@@ -17,9 +17,9 @@ is a small, free, easy-to-use command line utility that probes a given URL and d
 This software is written in [Go](https://go.dev), and should then benefit from the [wide list of targets provided by Go](https://go.dev/doc/install/source#environment).
 
 This software has been reported to work well on:
-- *Linux* (amd64, 386, arm64, arm)
-- *Windows* (amd64, 386)
-- *MacOS* (amd64)
+- *Linux:* amd64, 386, arm64, arm
+- *Windows:* amd64, 386
+- *MacOS:* amd64 (Intel Macs), arm64 (Apple Silicon)
 
 ## Usage
 
@@ -37,6 +37,7 @@ Flags:
       --cookie stringArray      add one or more cookies, in the form name:value
   -c, --count int               define the number of request to be sent (default unlimited)
   -K, --disable-keepalive       disable keep-alive feature
+  -x, --extra-parameter         extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy
   -H, --head                    perform HTTP HEAD requests instead of GETs
   -h, --help                    help for http-ping
   -k, --insecure                allow insecure server connections when using SSL
