@@ -6,6 +6,7 @@ import (
 	"github.com/fever-ch/http-ping/app"
 	"github.com/spf13/cobra"
 	"math"
+	"regexp"
 	"time"
 )
 
@@ -18,7 +19,17 @@ func Execute() {
 
 func prepareRootCmd() *cobra.Command {
 
-	var config = cmdConfig{}
+	var config = app.Config{}
+
+	var ipv4, ipv6 bool
+
+	var head bool
+
+	var quiet, verbose bool
+
+	var cookies []string
+
+	var parameters []string
 
 	var rootCmd = &cobra.Command{
 		SilenceUsage:  true,
@@ -33,16 +44,39 @@ func prepareRootCmd() *cobra.Command {
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			if config.ipv4 && config.ipv6 {
+			if !ipv4 && !ipv6 {
+				config.IPProtocol = "ip"
+			} else if ipv4 && !ipv6 {
+				config.IPProtocol = "ip4"
+			} else if !ipv4 && ipv6 {
+				config.IPProtocol = "ip6"
+			} else {
 				return errors.New("IPv4 and IPv6 cannot be enforced simultaneously")
 			}
 
-			if config.quiet && config.verbose {
+			if quiet && verbose {
 				return errors.New("quiet and verbose cannot be enforced simultaneously")
 			}
+			if verbose {
+				config.LogLevel = 2
+			} else if quiet {
+				config.LogLevel = 0
+			} else {
+				config.LogLevel = 1
+			}
 
-			if config.count <= 0 {
-				return fmt.Errorf("invalid count of requests to be sent `%d'", config.count)
+			if head {
+				config.Method = "HEAD"
+			} else {
+				config.Method = "GET"
+			}
+
+			if a, e := regexp.MatchString("^https?://", config.Target); e == nil && !a {
+				config.Target = "https://" + config.Target
+			}
+
+			if config.Count <= 0 {
+				return fmt.Errorf("invalid count of requests to be sent `%d'", config.Count)
 			}
 
 			if len(args) == 0 {
@@ -55,46 +89,60 @@ func prepareRootCmd() *cobra.Command {
 				return errors.New("too many arguments")
 			}
 
-			config.target = args[0]
+			for _, cookie := range cookies {
+				n, v := splitPair(cookie)
+				if n != "" {
+					config.Cookies = append(config.Cookies, app.Cookie{Name: n, Value: v})
+				}
+			}
+
+			for _, parameter := range parameters {
+				n, v := splitPair(parameter)
+				if n != "" {
+					config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
+				}
+			}
+
+			config.Target = args[0]
 			app.HTTPPing(&config)
 
 			return nil
 		},
 	}
 
-	rootCmd.Flags().StringVar(&config.userAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectURL), "define a custom user-agent")
+	rootCmd.Flags().StringVar(&config.UserAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectURL), "define a custom user-agent")
 
-	rootCmd.Flags().StringVarP(&config.connTarget, "conn-target", "", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
+	rootCmd.Flags().StringVarP(&config.ConnTarget, "conn-target", "", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
 
-	rootCmd.Flags().BoolVarP(&config.head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
+	rootCmd.Flags().BoolVarP(&head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
 
-	rootCmd.Flags().BoolVarP(&config.ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")
+	rootCmd.Flags().BoolVarP(&ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")
 
-	rootCmd.Flags().BoolVarP(&config.ipv6, "ipv6", "6", false, "force IPv6 resolution for dual-stacked sites")
+	rootCmd.Flags().BoolVarP(&ipv6, "ipv6", "6", false, "force IPv6 resolution for dual-stacked sites")
 
-	rootCmd.Flags().BoolVarP(&config.fullConnection, "disable-keepalive", "K", false, "disable keep-alive feature")
+	rootCmd.Flags().BoolVarP(&config.DisableKeepAlive, "disable-keepalive", "K", false, "disable keep-alive feature")
 
-	rootCmd.Flags().DurationVarP(&config.wait, "wait", "w", time.Second, "define the time for a response before timing out")
+	rootCmd.Flags().DurationVarP(&config.Wait, "wait", "w", time.Second, "define the time for a response before timing out")
 
-	rootCmd.Flags().DurationVarP(&config.interval, "interval", "i", 1*time.Second, "define the wait time between each request")
+	rootCmd.Flags().DurationVarP(&config.Interval, "interval", "i", 1*time.Second, "define the wait time between each request")
 
-	rootCmd.Flags().Int64VarP(&config.count, "count", "c", math.MaxInt, "define the number of request to be sent")
+	rootCmd.Flags().Int64VarP(&config.Count, "count", "c", math.MaxInt, "define the number of request to be sent")
 
 	rootCmd.Flag("count").DefValue = "unlimited"
 
-	rootCmd.Flags().BoolVarP(&config.verbose, "verbose", "v", false, "print more details")
+	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "print more details")
 
-	rootCmd.Flags().BoolVarP(&config.quiet, "quiet", "q", false, "print less details")
+	rootCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "print less details")
 
-	rootCmd.Flags().BoolVarP(&config.noCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
+	rootCmd.Flags().BoolVarP(&config.NoCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
 
-	rootCmd.Flags().StringArrayVarP(&config.cookies, "cookie", "", []string{}, "add one or more cookies, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&cookies, "cookie", "", []string{}, "add one or more cookies, in the form name:value")
 
-	rootCmd.Flags().StringArrayVarP(&config.parameters, "parameter", "", []string{}, "add one or more parameters, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&parameters, "parameter", "", []string{}, "add one or more parameters, in the form name:value")
 
-	rootCmd.Flags().BoolVarP(&config.ignoreServerErrors, "no-server-error", "", false, "ignore server errors (5xx), do not handle them as \"lost pings\"")
+	rootCmd.Flags().BoolVarP(&config.IgnoreServerErrors, "no-server-error", "", false, "ignore server errors (5xx), do not handle them as \"lost pings\"")
 
-	rootCmd.Flags().BoolVarP(&config.extraParam, "extra-parameter", "x", false, "extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy")
+	rootCmd.Flags().BoolVarP(&config.ExtraParam, "extra-parameter", "x", false, "extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy")
 
 	return rootCmd
 }

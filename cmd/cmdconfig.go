@@ -7,6 +7,8 @@ import (
 )
 
 type cmdConfig struct {
+	app.Config
+
 	target string
 
 	ipv4 bool

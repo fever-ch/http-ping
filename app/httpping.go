@@ -10,45 +10,45 @@ import (
 )
 
 // HTTPPing actually does the pinging specified in config
-func HTTPPing(config Config) {
+func HTTPPing(config *Config) {
 
-	u, _ := url.Parse(config.Target())
+	u, _ := url.Parse(config.Target)
 
 	client, err := NewWebClient(config)
 
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s (%s)\n", err, config.IPProtocol())
+		_, _ = fmt.Fprintf(os.Stderr, "%s (%s)\n", err, config.IPProtocol)
 		os.Exit(1)
 	}
 
-	fmt.Printf("HTTP-PING %s (%s) %s\n", u.String(), client.connTarget, config.Method())
+	fmt.Printf("HTTP-PING %s (%s) %s\n", u.String(), client.connTarget, config.Method)
 
 	var latencies []time.Duration
 
 	sh := util.NewSignalHandler(os.Interrupt)
 
 	_ = client.DoMeasure()
-	sh.Sleep(config.Interval())
+	sh.Sleep(config.Interval)
 
 	attempts, failures := 0, 0
 
-	for a := int64(0); a < config.Count() && !sh.Triggered(); a++ {
+	for a := int64(0); a < config.Count && !sh.Triggered(); a++ {
 		attempts++
 		if measure := client.DoMeasure(); !measure.IsFailure {
-			if config.LogLevel() == 1 {
+			if config.LogLevel == 1 {
 				fmt.Printf("%4d: code=%d size=%d time=%.3f ms\n", a, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
-			} else if config.LogLevel() == 2 {
+			} else if config.LogLevel == 2 {
 				fmt.Printf("%4d: code=%d conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", a, measure.StatusCode, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
 			}
 			latencies = append(latencies, measure.Duration)
 		} else {
 			failures++
-			if config.LogLevel() >= 1 {
+			if config.LogLevel >= 1 {
 				fmt.Printf("%4d: %s\n", a, measure.FailureCause)
 			}
 		}
-		if a < config.Count() {
-			sh.Sleep(config.Interval())
+		if a < config.Count {
+			sh.Sleep(config.Interval)
 		}
 	}
 
