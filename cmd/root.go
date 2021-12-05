@@ -44,20 +44,19 @@ func prepareRootCmd() *cobra.Command {
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			if !ipv4 && !ipv6 {
-				config.IPProtocol = "ip"
-			} else if ipv4 && !ipv6 {
-				config.IPProtocol = "ip4"
-			} else if !ipv4 && ipv6 {
-				config.IPProtocol = "ip6"
-			} else {
+			if ipv4 && ipv6 {
 				return errors.New("IPv4 and IPv6 cannot be enforced simultaneously")
+			} else if !ipv4 && !ipv6 {
+				config.IPProtocol = "ip"
+			} else if ipv4 {
+				config.IPProtocol = "ip4"
+			} else {
+				config.IPProtocol = "ip6"
 			}
 
-			if quiet && verbose {
+			if verbose && quiet {
 				return errors.New("quiet and verbose cannot be enforced simultaneously")
-			}
-			if verbose {
+			} else if verbose {
 				config.LogLevel = 2
 			} else if quiet {
 				config.LogLevel = 0
@@ -145,4 +144,13 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().BoolVarP(&config.ExtraParam, "extra-parameter", "x", false, "extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy")
 
 	return rootCmd
+}
+
+func splitPair(str string) (string, string) {
+	r := regexp.MustCompile("^([^:]*):(.*)$")
+	e := r.FindStringSubmatch(str)
+	if len(e) == 3 {
+		return e[1], e[2]
+	}
+	return "", ""
 }
