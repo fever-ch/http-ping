@@ -26,13 +26,13 @@ func (webClient *WebClient) resolve(host string) (*net.IPAddr, error) {
 
 // WebClient represents an HTTP/S client designed to do performance analysis
 type WebClient struct {
-	connCounter *ConnCounter
-	httpClient  *http.Client
-	reused      bool
-	connTarget  string
-	config      *Config
-	url         *url.URL
-	dialCtx     func(ctx context.Context, network, addr string) (net.Conn, error)
+	connCounter         *ConnCounter
+	httpClient          *http.Client
+	reused              bool
+	connTarget          string
+	config              *Config
+	url                 *url.URL
+	dialCtx, dialTLSCtx func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
@@ -59,6 +59,7 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	}
 
 	dialer := &net.Dialer{}
+	dialerTLS := &tls.Dialer{}
 
 	webClient.dialCtx = func(ctx context.Context, network, addr string) (net.Conn, error) {
 
@@ -66,6 +67,21 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		if err != nil {
 			return conn, err
 		}
+		return webClient.connCounter.Bind(conn), nil
+	}
+
+	webClient.dialTLSCtx = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dialerTLS.Config = &tls.Config{
+			InsecureSkipVerify: webClient.config.NoCheckCertificate,
+			ServerName:         webClient.url.Hostname(),
+		}
+
+		conn, err := dialerTLS.DialContext(ctx, network, webClient.connTarget)
+
+		if err != nil {
+			return conn, err
+		}
+
 		return webClient.connCounter.Bind(conn), nil
 	}
 
@@ -80,35 +96,14 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	}
 
 	webClient.httpClient.Transport = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			dialer := &net.Dialer{}
-			conn, err := dialer.DialContext(ctx, network, webClient.connTarget)
-			if err != nil {
-				return conn, err
-			}
-			return webClient.connCounter.Bind(conn), nil
-		},
-		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			netDialer := &net.Dialer{}
+		Proxy:          http.ProxyFromEnvironment,
+		DialContext:    webClient.dialCtx,
+		DialTLSContext: webClient.dialTLSCtx,
 
-			tlsDialer := &tls.Dialer{
-				NetDialer: netDialer,
-			}
-			conn, err := tlsDialer.DialContext(ctx, network, addr)
-			if err != nil {
-				return conn, err
-			}
-			return conn, err
-		},
-
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		DisableKeepAlives:     webClient.config.DisableKeepAlive,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: webClient.config.NoCheckCertificate},
+		ForceAttemptHTTP2: true,
+		MaxIdleConns:      1,
+		DisableKeepAlives: webClient.config.DisableKeepAlive,
+		IdleConnTimeout:   config.Interval + config.Wait,
 	}
 
 	var cookies []*http.Cookie

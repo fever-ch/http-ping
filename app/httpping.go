@@ -70,4 +70,6 @@ func HTTPPing(config *Config) {
 	if len(latencies) > 0 {
 		fmt.Printf("%s\n", stats.PingStatsFromLatencies(latencies).String())
 	}
+	
+	os.Exit(0)
 }

@@ -112,24 +112,6 @@ func prepareRootCmd() *cobra.Command {
 			}
 
 			config.Target = args[0]
-			//ch := app.HTTPPingE(&config)
-			//
-			//count := 0
-			//failures := 0
-			//for measure := range ch {
-			//	if !measure.IsFailure {
-			//		if config.LogLevel == 1 {
-			//			fmt.Printf("%4d: code=%d size=%d time=%.2f ms\n", count, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
-			//		} else if config.LogLevel == 2 {
-			//			fmt.Printf("%4d: code=%d conn-reused=%t size=%d in=%d out=%d time=%.2f ms\n", count, measure.StatusCode, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
-			//		}
-			//	} else {
-			//		fmt.Printf("%4d: %s\n", count, measure.FailureCause)
-			//		failures++
-			//	}
-			//	count++
-			//
-			//}
 
 			app.HTTPPing(&config)
 
