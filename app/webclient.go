@@ -26,13 +26,12 @@ func (webClient *WebClient) resolve(host string) (*net.IPAddr, error) {
 
 // WebClient represents an HTTP/S client designed to do performance analysis
 type WebClient struct {
-	connCounter         *ConnCounter
-	httpClient          *http.Client
-	reused              bool
-	connTarget          string
-	config              *Config
-	url                 *url.URL
-	dialCtx, dialTLSCtx func(ctx context.Context, network, addr string) (net.Conn, error)
+	connCounter *ConnCounter
+	httpClient  *http.Client
+	reused      bool
+	connTarget  string
+	config      *Config
+	url         *url.URL
 }
 
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
@@ -59,29 +58,12 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	}
 
 	dialer := &net.Dialer{}
-	dialerTLS := &tls.Dialer{}
 
-	webClient.dialCtx = func(ctx context.Context, network, addr string) (net.Conn, error) {
-
+	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		conn, err := dialer.DialContext(ctx, network, webClient.connTarget)
 		if err != nil {
 			return conn, err
 		}
-		return webClient.connCounter.Bind(conn), nil
-	}
-
-	webClient.dialTLSCtx = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		dialerTLS.Config = &tls.Config{
-			InsecureSkipVerify: webClient.config.NoCheckCertificate,
-			ServerName:         webClient.url.Hostname(),
-		}
-
-		conn, err := dialerTLS.DialContext(ctx, network, webClient.connTarget)
-
-		if err != nil {
-			return conn, err
-		}
-
 		return webClient.connCounter.Bind(conn), nil
 	}
 
@@ -96,13 +78,16 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	}
 
 	webClient.httpClient.Transport = &http.Transport{
-		Proxy:          http.ProxyFromEnvironment,
-		DialContext:    webClient.dialCtx,
-		DialTLSContext: webClient.dialTLSCtx,
+		Proxy:       http.ProxyFromEnvironment,
+		DialContext: dialCtx,
+
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: config.NoCheckCertificate,
+		},
 
 		ForceAttemptHTTP2: true,
-		MaxIdleConns:      1,
-		DisableKeepAlives: webClient.config.DisableKeepAlive,
+		MaxIdleConns:      10,
+		DisableKeepAlives: config.DisableKeepAlive,
 		IdleConnTimeout:   config.Interval + config.Wait,
 	}
 
@@ -183,6 +168,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	}
 
 	return &Answer{
+		Proto:        res.Proto,
 		Duration:     d,
 		StatusCode:   res.StatusCode,
 		Bytes:        s,

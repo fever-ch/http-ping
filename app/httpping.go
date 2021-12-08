@@ -40,7 +40,7 @@ func HTTPPing(config *Config) {
 						if config.LogLevel == 1 {
 							fmt.Printf("%4d: code=%d size=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
 						} else if config.LogLevel == 2 {
-							fmt.Printf("%4d: code=%d conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
+							fmt.Printf("%4d: code=%d proto=%s conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Proto, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
 						}
 						latencies = append(latencies, measure.Duration)
 					} else {
@@ -70,6 +70,6 @@ func HTTPPing(config *Config) {
 	if len(latencies) > 0 {
 		fmt.Printf("%s\n", stats.PingStatsFromLatencies(latencies).String())
 	}
-	
+
 	os.Exit(0)
 }
