@@ -46,6 +46,8 @@ func prepareRootCmd() *cobra.Command {
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 
+			config.Target = args[0]
+
 			if ipv4 && ipv6 {
 				return errors.New("IPv4 and IPv6 cannot be enforced simultaneously")
 			} else if !ipv4 && !ipv6 {
@@ -110,8 +112,6 @@ func prepareRootCmd() *cobra.Command {
 					config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
 				}
 			}
-
-			config.Target = args[0]
 
 			app.HTTPPing(&config)
 
