@@ -36,6 +36,4 @@ type Config struct {
 	Parameters         []Parameter
 	IgnoreServerErrors bool
 	ExtraParam         bool
-	Http2              bool
-	Http2z             bool
 }
