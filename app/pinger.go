@@ -7,6 +7,7 @@ import (
 
 // Answer is the out of a measurement done as an HTTP ping
 type Answer struct {
+	Proto        string
 	Duration     time.Duration
 	StatusCode   int
 	Bytes        int64
