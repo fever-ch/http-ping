@@ -45,7 +45,7 @@ func HTTPPing(config *Config) {
 						latencies = append(latencies, measure.Duration)
 					} else {
 						if config.LogLevel >= 1 {
-							fmt.Printf("%4d: %s\n", attempts, measure.FailureCause)
+							fmt.Printf("%4d: Error: %s\n", attempts, measure.FailureCause)
 						}
 						failures++
 					}
@@ -61,7 +61,7 @@ func HTTPPing(config *Config) {
 
 	fmt.Printf("\n--- %s (%s) ping statistics ---\n", pinger.client.url.String(), pinger.client.connTarget)
 	var lossRate = float64(0)
-	if len(latencies) > 0 {
+	if attempts > 0 {
 		lossRate = float64(100*failures) / float64(attempts)
 	}
 
