@@ -155,6 +155,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.DisableCompression, "disable-compression", "", false, "the client will not ask for compression of answers")
 
+	rootCmd.Flags().BoolVarP(&config.AudibleBell, "audible-bell", "a", false, "audible ; include a bell (ASCII 0x07) character in the output when any successful answer is receive")
+
 	return rootCmd
 }
 

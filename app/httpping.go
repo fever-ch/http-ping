@@ -45,6 +45,9 @@ func HTTPPing(config *Config, stdout io.Writer, stderr io.Writer) {
 							_, _ = fmt.Fprintf(stdout, "%4d: code=%d proto=%s conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Proto, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
 						}
 						latencies = append(latencies, measure.Duration)
+						if config.AudibleBell {
+							_, _ = fmt.Fprintf(stdout, "\a")
+						}
 					} else {
 						if config.LogLevel >= 1 {
 							_, _ = fmt.Fprintf(stdout, "%4d: Error: %s\n", attempts, measure.FailureCause)

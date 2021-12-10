@@ -37,4 +37,5 @@ type Config struct {
 	IgnoreServerErrors bool
 	ExtraParam         bool
 	DisableCompression bool
+	AudibleBell        bool
 }
