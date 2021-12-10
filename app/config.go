@@ -39,4 +39,6 @@ type Config struct {
 	DisableCompression bool
 	AudibleBell        bool
 	Referrer           string
+	AuthUsername       string
+	AuthPassword       string
 }

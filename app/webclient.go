@@ -132,6 +132,10 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		req.Header.Set("Referer", webClient.config.Referrer)
 	}
 
+	if webClient.config.AuthUsername != "" || webClient.config.AuthPassword != "" {
+		req.SetBasicAuth(webClient.config.AuthUsername, webClient.config.AuthPassword)
+	}
+
 	// Host is considered as a special header in net/http, for simplicity we use here a common way to handle both
 	for _, header := range webClient.config.Headers {
 		if strings.ToLower(header.Name) != "host" {

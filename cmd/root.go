@@ -159,6 +159,10 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().StringVarP(&config.Referrer, "referrer", "", "", "define the referrer")
 
+	rootCmd.Flags().StringVarP(&config.AuthUsername, "auth-username", "", "", "authentication username")
+
+	rootCmd.Flags().StringVarP(&config.AuthPassword, "auth-password", "", "", "authentication username")
+
 	return rootCmd
 }
 
