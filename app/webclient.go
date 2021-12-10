@@ -100,7 +100,6 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	webClient.url, _ = url.Parse(config.Target)
 
 	if config.ConnTarget == "" {
-
 		ipAddr, err := webClient.resolve(webClient.url.Hostname())
 
 		if err != nil {
@@ -111,7 +110,12 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		if port == "" {
 			port = portMap[webClient.url.Scheme]
 		}
-		webClient.connTarget = fmt.Sprintf("[%s]:%s", ipAddr.IP.String(), port)
+
+		if strings.Contains(ipAddr.IP.String(), ":") {
+			webClient.connTarget = fmt.Sprintf("[%s]:%s", ipAddr.IP.String(), port)
+		} else {
+			webClient.connTarget = fmt.Sprintf("%s:%s", ipAddr.IP.String(), port)
+		}
 	} else {
 		webClient.connTarget = config.ConnTarget
 	}
