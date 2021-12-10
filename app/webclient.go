@@ -91,6 +91,10 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		IdleConnTimeout:    config.Interval + config.Wait,
 	}
 
+	if webClient.config.DisableHTTP2 {
+		webClient.httpClient.Transport.(*http.Transport).TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	}
+
 	var cookies []*http.Cookie
 	for _, c := range webClient.config.Cookies {
 		cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})

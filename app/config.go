@@ -41,4 +41,5 @@ type Config struct {
 	Referrer           string
 	AuthUsername       string
 	AuthPassword       string
+	DisableHTTP2       bool
 }
