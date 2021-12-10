@@ -127,6 +127,8 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		req.URL.RawQuery = q.Encode()
 	}
 
+	req.Header.Set("User-Agent", webClient.config.UserAgent)
+
 	// Host is considered as a special header in net/http, for simplicity we use here a common way to handle both
 	for _, header := range webClient.config.Headers {
 		if strings.ToLower(header.Name) != "host" {
