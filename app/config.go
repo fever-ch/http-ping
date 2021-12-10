@@ -38,4 +38,5 @@ type Config struct {
 	ExtraParam         bool
 	DisableCompression bool
 	AudibleBell        bool
+	Referrer           string
 }

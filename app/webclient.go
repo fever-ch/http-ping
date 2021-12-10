@@ -128,6 +128,9 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	}
 
 	req.Header.Set("User-Agent", webClient.config.UserAgent)
+	if webClient.config.Referrer != "" {
+		req.Header.Set("Referer", webClient.config.Referrer)
+	}
 
 	// Host is considered as a special header in net/http, for simplicity we use here a common way to handle both
 	for _, header := range webClient.config.Headers {

@@ -157,6 +157,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.AudibleBell, "audible-bell", "a", false, "audible ; include a bell (ASCII 0x07) character in the output when any successful answer is receive")
 
+	rootCmd.Flags().StringVarP(&config.Referrer, "referrer", "", "", "define the referrer")
+
 	return rootCmd
 }
 
