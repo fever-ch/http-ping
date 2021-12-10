@@ -42,7 +42,7 @@ func HTTPPing(config *Config, stdout io.Writer, stderr io.Writer) {
 						if config.LogLevel == 1 {
 							_, _ = fmt.Fprintf(stdout, "%4d: code=%d size=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
 						} else if config.LogLevel == 2 {
-							_, _ = fmt.Fprintf(stdout, "%4d: code=%d proto=%s conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Proto, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
+							_, _ = fmt.Fprintf(stdout, "%4d: code=%d proto=%s conn-reused=%t compressed=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Proto, measure.SocketReused, measure.Compressed, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
 						}
 						latencies = append(latencies, measure.Duration)
 						if config.AudibleBell {

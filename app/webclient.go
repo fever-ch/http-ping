@@ -184,6 +184,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		InBytes:      in,
 		OutBytes:     out,
 		SocketReused: webClient.reused,
+		Compressed:   !res.Uncompressed,
 
 		IsFailure:    failed,
 		FailureCause: failureCause,

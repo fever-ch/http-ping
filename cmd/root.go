@@ -153,7 +153,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.ExtraParam, "extra-parameter", "x", false, "extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy")
 
-	rootCmd.Flags().BoolVarP(&config.DisableCompression, "disable-compression", "", false, "the client will not ask for compression of answers")
+	rootCmd.Flags().BoolVarP(&config.DisableCompression, "disable-compression", "", false, "the client will not request the remote server to compress answers (hence it might actually do it)")
 
 	rootCmd.Flags().BoolVarP(&config.AudibleBell, "audible-bell", "a", false, "audible ; include a bell (ASCII 0x07) character in the output when any successful answer is received")
 

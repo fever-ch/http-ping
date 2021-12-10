@@ -14,6 +14,7 @@ type Answer struct {
 	InBytes      int64
 	OutBytes     int64
 	SocketReused bool
+	Compressed   bool
 
 	IsFailure    bool
 	FailureCause string
