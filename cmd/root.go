@@ -45,6 +45,15 @@ func prepareRootCmd() *cobra.Command {
 		Version: app.Version,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				_ = cmd.Usage()
+				cmd.Println()
+				return errors.New("target-URL required")
+			} else if len(args) > 1 {
+				_ = cmd.Usage()
+				cmd.Println()
+				return errors.New("too many arguments")
+			}
 
 			config.Target = args[0]
 
@@ -80,16 +89,6 @@ func prepareRootCmd() *cobra.Command {
 
 			if config.Count <= 0 {
 				return fmt.Errorf("invalid count of requests to be sent `%d'", config.Count)
-			}
-
-			if len(args) == 0 {
-				_ = cmd.Usage()
-				cmd.Println()
-				return errors.New("target-URL required")
-			} else if len(args) > 1 {
-				_ = cmd.Usage()
-				cmd.Println()
-				return errors.New("too many arguments")
 			}
 
 			for _, cookie := range cookies {
