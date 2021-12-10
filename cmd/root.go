@@ -143,9 +143,9 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.NoCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
 
-	rootCmd.Flags().StringArrayVarP(&cookies, "cookie", "", []string{}, "add one or more cookies, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&cookies, "cookie", "", []string{}, "add one or more cookies, in the form name=value")
 
-	rootCmd.Flags().StringArrayVarP(&headers, "header", "", []string{}, "add one or more header, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&headers, "header", "", []string{}, "add one or more header, in the form name=value")
 
 	rootCmd.Flags().StringArrayVarP(&parameters, "parameter", "", []string{}, "add one or more parameters, in the form name:value")
 
@@ -155,7 +155,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.DisableCompression, "disable-compression", "", false, "the client will not ask for compression of answers")
 
-	rootCmd.Flags().BoolVarP(&config.AudibleBell, "audible-bell", "a", false, "audible ; include a bell (ASCII 0x07) character in the output when any successful answer is receive")
+	rootCmd.Flags().BoolVarP(&config.AudibleBell, "audible-bell", "a", false, "audible ; include a bell (ASCII 0x07) character in the output when any successful answer is received")
 
 	rootCmd.Flags().StringVarP(&config.Referrer, "referrer", "", "", "define the referrer")
 
@@ -163,7 +163,7 @@ func prepareRootCmd() *cobra.Command {
 }
 
 func splitPair(str string) (string, string) {
-	r := regexp.MustCompile("^([^:]*):(.*)$")
+	r := regexp.MustCompile("^([^:]*)=(.*)$")
 	e := r.FindStringSubmatch(str)
 	if len(e) == 3 {
 		return e[1], e[2]
