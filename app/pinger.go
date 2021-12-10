@@ -52,7 +52,11 @@ func NewPinger(config *Config) (*Pinger, error) {
 func (pinger *Pinger) Ping() <-chan *Answer {
 	measures := make(chan *Answer)
 	go func() {
-		pinger.client.DoMeasure()
+
+		if !pinger.config.DisableKeepAlive {
+			pinger.client.DoMeasure()
+			time.Sleep(pinger.config.Interval)
+		}
 
 		for a := int64(0); a < pinger.config.Count; a++ {
 			measures <- pinger.client.DoMeasure()
