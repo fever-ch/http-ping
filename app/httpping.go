@@ -3,13 +3,15 @@ package app
 import (
 	"fmt"
 	"github.com/fever-ch/http-ping/stats"
+	"io"
 	"os"
 	"os/signal"
 	"time"
 )
 
 // HTTPPing actually does the pinging specified in config
-func HTTPPing(config *Config) {
+func HTTPPing(config *Config, stdout io.Writer, stderr io.Writer) {
+
 	ic := make(chan os.Signal, 1)
 
 	signal.Notify(ic, os.Interrupt)
@@ -17,13 +19,13 @@ func HTTPPing(config *Config) {
 	pinger, err := NewPinger(config)
 
 	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(stdout, "Error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
 	ch := pinger.Ping()
 
-	fmt.Printf("HTTP-PING %s (%s) %s\n", pinger.client.url.String(), pinger.client.connTarget, config.Method)
+	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s (%s) %s\n", pinger.client.url.String(), pinger.client.connTarget, config.Method)
 
 	var latencies []time.Duration
 	attempts, failures := 0, 0
@@ -38,14 +40,14 @@ func HTTPPing(config *Config) {
 				} else {
 					if !measure.IsFailure {
 						if config.LogLevel == 1 {
-							fmt.Printf("%4d: code=%d size=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
+							_, _ = fmt.Fprintf(stdout, "%4d: code=%d size=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Bytes, float64(measure.Duration.Nanoseconds())/1e6)
 						} else if config.LogLevel == 2 {
-							fmt.Printf("%4d: code=%d proto=%s conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Proto, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
+							_, _ = fmt.Fprintf(stdout, "%4d: code=%d proto=%s conn-reused=%t size=%d in=%d out=%d time=%.3f ms\n", attempts, measure.StatusCode, measure.Proto, measure.SocketReused, measure.Bytes, measure.InBytes, measure.OutBytes, float64(measure.Duration.Nanoseconds())/1e6)
 						}
 						latencies = append(latencies, measure.Duration)
 					} else {
 						if config.LogLevel >= 1 {
-							fmt.Printf("%4d: Error: %s\n", attempts, measure.FailureCause)
+							_, _ = fmt.Fprintf(stdout, "%4d: Error: %s\n", attempts, measure.FailureCause)
 						}
 						failures++
 					}
@@ -65,11 +67,10 @@ func HTTPPing(config *Config) {
 		lossRate = float64(100*failures) / float64(attempts)
 	}
 
-	fmt.Printf("%d requests sent, %d answers received, %.1f%% loss\n", attempts, attempts-failures, lossRate)
+	_, _ = fmt.Fprintf(stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, attempts-failures, lossRate)
 
 	if len(latencies) > 0 {
-		fmt.Printf("%s\n", stats.PingStatsFromLatencies(latencies).String())
+		_, _ = fmt.Fprintf(stdout, "%s\n", stats.PingStatsFromLatencies(latencies).String())
 	}
 
-	os.Exit(0)
 }

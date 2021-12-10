@@ -23,7 +23,7 @@ func (a *Answer) String() string {
 	return fmt.Sprintf("code=%d size=%d conn-reused=%t time=%.3f ms", a.StatusCode, a.Bytes, a.SocketReused, float64(a.Duration.Nanoseconds())/1e6)
 }
 
-// Pinger is responsible of actually doing the HTTP pings
+// Pinger is responsible for actually doing the HTTP pings
 type Pinger struct {
 	client *WebClient
 	config *Config

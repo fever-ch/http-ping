@@ -12,5 +12,8 @@ var (
 
 func init() {
 	buildInfo, _ := debug.ReadBuildInfo()
-	Version = buildInfo.Main.Version
+
+	if buildInfo != nil {
+		Version = buildInfo.Main.Version
+	}
 }
