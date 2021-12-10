@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/domainr/dnsr"
 	"io"
 	"io/ioutil"
 	"net"
@@ -21,7 +22,65 @@ var portMap = map[string]string{
 }
 
 func (webClient *WebClient) resolve(host string) (*net.IPAddr, error) {
+	if webClient.config.FullDNS {
+		var ip net.IP
+
+		if ip = net.ParseIP(host); ip == nil {
+			if entries, err := fullResolveFromRoot(webClient.config.IPProtocol, host); err == nil {
+				ip = net.ParseIP(*entries)
+			}
+		}
+		if ip != nil {
+			return &net.IPAddr{IP: ip}, nil
+		}
+		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
+
+	}
 	return net.ResolveIPAddr(webClient.config.IPProtocol, host)
+
+}
+
+func fullResolveFromRoot(network, host string) (*string, error) {
+	var qtypes []string
+
+	if network == "ip" {
+		qtypes = []string{"A", "AAAA"}
+	} else if network == "ip4" {
+		qtypes = []string{"A"}
+	} else if network == "ip6" {
+		qtypes = []string{"AAAA"}
+	} else {
+		qtypes = []string{}
+	}
+
+	r := dnsr.New(1024)
+	requestCount := 0
+
+	var resolveRecu func(r *dnsr.Resolver, host string) (*string, error)
+
+	resolveRecu = func(r *dnsr.Resolver, host string) (*string, error) {
+		requestCount++
+
+		cnames := make(map[string]struct{})
+		for _, qtype := range qtypes {
+			for _, rr := range r.Resolve(host, qtype) {
+				if rr.Type == qtype {
+					return &rr.Value, nil
+				} else if rr.Type == "CNAME" {
+					cnames[rr.Value] = struct{}{}
+				}
+			}
+		}
+
+		for cname := range cnames {
+			return resolveRecu(r, cname)
+			//out = append(out, resolveRecu(r, cname)...)
+		}
+
+		return nil, fmt.Errorf("no host found: %s", host)
+	}
+
+	return resolveRecu(r, host)
 }
 
 // WebClient represents an HTTP/S client designed to do performance analysis

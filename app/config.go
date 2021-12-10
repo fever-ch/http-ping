@@ -42,4 +42,5 @@ type Config struct {
 	AuthUsername       string
 	AuthPassword       string
 	DisableHTTP2       bool
+	FullDNS            bool
 }

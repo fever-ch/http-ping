@@ -165,6 +165,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.DisableHTTP2, "disable-http2", "", false, "disable the HTTP/2 protocol")
 
+	rootCmd.Flags().BoolVarP(&config.FullDNS, "full-dns-resolution", "D", false, "enable full dns resolution from the root servers")
+
 	return rootCmd
 }
 
