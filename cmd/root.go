@@ -153,6 +153,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.ExtraParam, "extra-parameter", "x", false, "extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy")
 
+	rootCmd.Flags().BoolVarP(&config.DisableCompression, "disable-compression", "", false, "the client will not ask for compression of answers")
+
 	return rootCmd
 }
 

@@ -36,4 +36,5 @@ type Config struct {
 	Parameters         []Parameter
 	IgnoreServerErrors bool
 	ExtraParam         bool
+	DisableCompression bool
 }

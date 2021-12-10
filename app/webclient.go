@@ -84,11 +84,11 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: config.NoCheckCertificate,
 		},
-
-		ForceAttemptHTTP2: true,
-		MaxIdleConns:      10,
-		DisableKeepAlives: config.DisableKeepAlive,
-		IdleConnTimeout:   config.Interval + config.Wait,
+		DisableCompression: config.DisableCompression,
+		ForceAttemptHTTP2:  true,
+		MaxIdleConns:       10,
+		DisableKeepAlives:  config.DisableKeepAlive,
+		IdleConnTimeout:    config.Interval + config.Wait,
 	}
 
 	var cookies []*http.Cookie
