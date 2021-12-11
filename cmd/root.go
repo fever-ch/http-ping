@@ -169,6 +169,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.CacheDNSRequests, "dns-cache", "d", false, "cache DNS requests")
 
+	rootCmd.Flags().BoolVarP(&config.KeepCookies, "keep-cookies", "", false, "keep received cookies between requests")
+
 	return rootCmd
 }
 

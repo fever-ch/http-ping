@@ -13,7 +13,10 @@ type resolver struct {
 }
 
 func newResolver(config *Config) *resolver {
-	return &resolver{config: config}
+	return &resolver{
+		config: config,
+		cache:  make(map[string]*net.IPAddr),
+	}
 }
 
 func (resolver *resolver) resolveConn(addr string) (string, error) {

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,15 +25,16 @@ var portMap = map[string]string{
 type WebClient struct {
 	connCounter *ConnCounter
 	httpClient  *http.Client
-	reused      bool
 	connTarget  string
 	config      *Config
 	url         *url.URL
 	resolver    *resolver
+	cookiejar   cookiejar.Jar
 }
 
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
 func NewWebClient(config *Config) (*WebClient, error) {
+	_, _ = x509.SystemCertPool() // load system cert pool once at the beginning to not impact further measures
 
 	webClient := WebClient{config: config, connCounter: NewConnCounter()}
 	webClient.url, _ = url.Parse(config.Target)
@@ -61,12 +63,34 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	dialer.Resolver = &net.Resolver{
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			addr, _ := webClient.resolver.resolveConn(address)
-			println(addr)
+			println("the code around is useful")
 			return net.Dial(network, addr)
 		}}
 
+	startDnsHook := func(ctx context.Context) {
+		trace := httptrace.ContextClientTrace(ctx)
+		if trace == nil || trace.DNSStart == nil {
+			return
+		}
+
+		trace.DNSStart(httptrace.DNSStartInfo{})
+	}
+
+	stopDnsHook := func(ctx context.Context) {
+		trace := httptrace.ContextClientTrace(ctx)
+		if trace == nil || trace.DNSDone == nil {
+			return
+		}
+
+		trace.DNSDone(httptrace.DNSDoneInfo{})
+	}
+
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
+
+		startDnsHook(ctx)
 		ipaddr, _ := webClient.resolver.resolveConn(webClient.connTarget)
+		stopDnsHook(ctx)
+
 		conn, err := dialer.DialContext(ctx, network, ipaddr)
 		if err != nil {
 			return conn, err
@@ -74,40 +98,29 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		return webClient.connCounter.Bind(conn), nil
 	}
 
-	jar, _ := cookiejar.New(nil)
-
 	webClient.httpClient = &http.Client{
-		Jar:     jar,
 		Timeout: webClient.config.Wait,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-	}
+		Transport: &http.Transport{
+			Proxy:       http.ProxyFromEnvironment,
+			DialContext: dialCtx,
 
-	webClient.httpClient.Transport = &http.Transport{
-		Proxy:       http.ProxyFromEnvironment,
-		DialContext: dialCtx,
-
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: config.NoCheckCertificate,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: config.NoCheckCertificate,
+			},
+			DisableCompression: config.DisableCompression,
+			ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
+			MaxIdleConns:       10,
+			DisableKeepAlives:  config.DisableKeepAlive,
+			IdleConnTimeout:    config.Interval + config.Wait,
 		},
-		DisableCompression: config.DisableCompression,
-		ForceAttemptHTTP2:  true,
-		MaxIdleConns:       10,
-		DisableKeepAlives:  config.DisableKeepAlive,
-		IdleConnTimeout:    config.Interval + config.Wait,
 	}
 
 	if webClient.config.DisableHTTP2 {
 		webClient.httpClient.Transport.(*http.Transport).TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
 	}
-
-	var cookies []*http.Cookie
-	for _, c := range webClient.config.Cookies {
-		cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})
-	}
-
-	jar.SetCookies(webClient.url, cookies)
 
 	return &webClient, nil
 }
@@ -116,9 +129,46 @@ func NewWebClient(config *Config) (*WebClient, error) {
 func (webClient *WebClient) DoMeasure() *Answer {
 	req, _ := http.NewRequest(webClient.config.Method, webClient.config.Target, nil)
 
+	if webClient.httpClient.Jar == nil || !webClient.config.KeepCookies {
+		jar, _ := cookiejar.New(nil)
+		var cookies []*http.Cookie
+		for _, c := range webClient.config.Cookies {
+			cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})
+		}
+
+		jar.SetCookies(webClient.url, cookies)
+		webClient.httpClient.Jar = jar
+	}
+
+	var reused bool
+
+	connTimer := newTimer()
+	dnsTimer := newTimer()
+	tlsTimer := newTimer()
 	clientTrace := &httptrace.ClientTrace{
+
+		TLSHandshakeStart: func() {
+			tlsTimer.start()
+		},
+
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			tlsTimer.stop()
+		},
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			dnsTimer.start()
+		},
+
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			dnsTimer.stop()
+		},
+
+		GetConn: func(hostPort string) {
+			connTimer.start()
+		},
+
 		GotConn: func(info httptrace.GotConnInfo) {
-			webClient.reused = info.Reused
+			connTimer.stop()
+			reused = info.Reused
 		},
 	}
 	traceCtx := httptrace.WithClientTrace(context.Background(), clientTrace)
@@ -187,6 +237,10 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		failureCause = "Server-side error"
 	}
 
+	fmt.Printf("dns:  %d\n", dnsTimer.duration())
+	fmt.Printf("tls:  %d\n", tlsTimer.duration())
+	fmt.Printf("conn: %d\n", connTimer.duration())
+
 	return &Answer{
 		Proto:        res.Proto,
 		Duration:     d,
@@ -194,7 +248,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		Bytes:        s,
 		InBytes:      in,
 		OutBytes:     out,
-		SocketReused: webClient.reused,
+		SocketReused: reused,
 		Compressed:   !res.Uncompressed,
 
 		IsFailure:    failed,

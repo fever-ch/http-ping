@@ -44,4 +44,5 @@ type Config struct {
 	DisableHTTP2       bool
 	FullDNS            bool
 	CacheDNSRequests   bool
+	KeepCookies        bool
 }
