@@ -167,6 +167,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.FullDNS, "full-dns-resolution", "D", false, "enable full dns resolution from the root servers")
 
+	rootCmd.Flags().BoolVarP(&config.CacheDNSRequests, "dns-cache", "d", false, "cache DNS requests")
+
 	return rootCmd
 }
 

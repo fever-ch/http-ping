@@ -43,4 +43,5 @@ type Config struct {
 	AuthPassword       string
 	DisableHTTP2       bool
 	FullDNS            bool
+	CacheDNSRequests   bool
 }

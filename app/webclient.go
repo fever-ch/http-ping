@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/domainr/dnsr"
 	"io"
 	"io/ioutil"
 	"net"
@@ -21,68 +20,6 @@ var portMap = map[string]string{
 	"https": "443",
 }
 
-func (webClient *WebClient) resolve(host string) (*net.IPAddr, error) {
-	if webClient.config.FullDNS {
-		var ip net.IP
-
-		if ip = net.ParseIP(host); ip == nil {
-			if entries, err := fullResolveFromRoot(webClient.config.IPProtocol, host); err == nil {
-				ip = net.ParseIP(*entries)
-			}
-		}
-		if ip != nil {
-			return &net.IPAddr{IP: ip}, nil
-		}
-		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
-
-	}
-	return net.ResolveIPAddr(webClient.config.IPProtocol, host)
-
-}
-
-func fullResolveFromRoot(network, host string) (*string, error) {
-	var qtypes []string
-
-	if network == "ip" {
-		qtypes = []string{"A", "AAAA"}
-	} else if network == "ip4" {
-		qtypes = []string{"A"}
-	} else if network == "ip6" {
-		qtypes = []string{"AAAA"}
-	} else {
-		qtypes = []string{}
-	}
-
-	r := dnsr.New(1024)
-	requestCount := 0
-
-	var resolveRecu func(r *dnsr.Resolver, host string) (*string, error)
-
-	resolveRecu = func(r *dnsr.Resolver, host string) (*string, error) {
-		requestCount++
-
-		cnames := make(map[string]struct{})
-		for _, qtype := range qtypes {
-			for _, rr := range r.Resolve(host, qtype) {
-				if rr.Type == qtype {
-					return &rr.Value, nil
-				} else if rr.Type == "CNAME" {
-					cnames[rr.Value] = struct{}{}
-				}
-			}
-		}
-
-		for cname := range cnames {
-			return resolveRecu(r, cname)
-			//out = append(out, resolveRecu(r, cname)...)
-		}
-
-		return nil, fmt.Errorf("no host found: %s", host)
-	}
-
-	return resolveRecu(r, host)
-}
-
 // WebClient represents an HTTP/S client designed to do performance analysis
 type WebClient struct {
 	connCounter *ConnCounter
@@ -91,6 +28,7 @@ type WebClient struct {
 	connTarget  string
 	config      *Config
 	url         *url.URL
+	resolver    *resolver
 }
 
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
@@ -98,23 +36,21 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 	webClient := WebClient{config: config, connCounter: NewConnCounter()}
 	webClient.url, _ = url.Parse(config.Target)
+	webClient.resolver = newResolver(config)
 
 	if config.ConnTarget == "" {
-		ipAddr, err := webClient.resolve(webClient.url.Hostname())
-
-		if err != nil {
-			return nil, err
-		}
+		webClient.connTarget = webClient.url.Hostname()
+		ipAddr := webClient.url.Hostname()
 
 		var port = webClient.url.Port()
 		if port == "" {
 			port = portMap[webClient.url.Scheme]
 		}
 
-		if strings.Contains(ipAddr.IP.String(), ":") {
-			webClient.connTarget = fmt.Sprintf("[%s]:%s", ipAddr.IP.String(), port)
+		if strings.Contains(ipAddr, ":") {
+			webClient.connTarget = fmt.Sprintf("[%s]:%s", ipAddr, port)
 		} else {
-			webClient.connTarget = fmt.Sprintf("%s:%s", ipAddr.IP.String(), port)
+			webClient.connTarget = fmt.Sprintf("%s:%s", ipAddr, port)
 		}
 	} else {
 		webClient.connTarget = config.ConnTarget
@@ -122,8 +58,16 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 	dialer := &net.Dialer{}
 
+	dialer.Resolver = &net.Resolver{
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			addr, _ := webClient.resolver.resolveConn(address)
+			println(addr)
+			return net.Dial(network, addr)
+		}}
+
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
-		conn, err := dialer.DialContext(ctx, network, webClient.connTarget)
+		ipaddr, _ := webClient.resolver.resolveConn(webClient.connTarget)
+		conn, err := dialer.DialContext(ctx, network, ipaddr)
 		if err != nil {
 			return conn, err
 		}
