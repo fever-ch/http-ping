@@ -15,7 +15,15 @@ type Answer struct {
 	OutBytes     int64
 	SocketReused bool
 	Compressed   bool
+	RemoteAddr   string
 
+	DNSDuration  time.Duration
+	TCPHandshake time.Duration
+	TLSDuration  time.Duration
+	ConnDuration time.Duration
+	ReqDuration  time.Duration
+	RespDuration time.Duration
+	Wait         time.Duration
 	IsFailure    bool
 	FailureCause string
 }
@@ -67,3 +75,12 @@ func (pinger *Pinger) Ping() <-chan *Answer {
 	}()
 	return measures
 }
+
+//0: 173.212.245.162:443, code=301, size=0 bytes, time=98.616 ms
+//[read: 213 bytes, written 49 bytes]
+//| 81 ms : request
+//|          2 ms : dns resolution
+//|         29 ms : tcp handshake
+//|         49 ms : tls handshake
+//| 15 ms : wait
+//|  4 ms : answer ingestion

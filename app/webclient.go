@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/fever-ch/http-ping/net/sockettrace"
 	"io"
 	"io/ioutil"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,20 +25,25 @@ var portMap = map[string]string{
 
 // WebClient represents an HTTP/S client designed to do performance analysis
 type WebClient struct {
-	connCounter *ConnCounter
-	httpClient  *http.Client
-	connTarget  string
-	config      *Config
-	url         *url.URL
-	resolver    *resolver
-	cookiejar   cookiejar.Jar
+	httpClient *http.Client
+	connTarget string
+	config     *Config
+	url        *url.URL
+	resolver   *resolver
+	cookiejar  cookiejar.Jar
+
+	writes int64
+	reads  int64
+}
+
+func init() {
+	// load system cert pool once at the beginning to not impact further measures
+	_, _ = x509.SystemCertPool()
 }
 
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
 func NewWebClient(config *Config) (*WebClient, error) {
-	_, _ = x509.SystemCertPool() // load system cert pool once at the beginning to not impact further measures
-
-	webClient := WebClient{config: config, connCounter: NewConnCounter()}
+	webClient := WebClient{config: config}
 	webClient.url, _ = url.Parse(config.Target)
 	webClient.resolver = newResolver(config)
 
@@ -67,7 +74,7 @@ func NewWebClient(config *Config) (*WebClient, error) {
 			return net.Dial(network, addr)
 		}}
 
-	startDnsHook := func(ctx context.Context) {
+	startDNSHook := func(ctx context.Context) {
 		trace := httptrace.ContextClientTrace(ctx)
 		if trace == nil || trace.DNSStart == nil {
 			return
@@ -76,7 +83,7 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		trace.DNSStart(httptrace.DNSStartInfo{})
 	}
 
-	stopDnsHook := func(ctx context.Context) {
+	stopDNSHook := func(ctx context.Context) {
 		trace := httptrace.ContextClientTrace(ctx)
 		if trace == nil || trace.DNSDone == nil {
 			return
@@ -84,18 +91,25 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 		trace.DNSDone(httptrace.DNSDoneInfo{})
 	}
+	startTCPHook := func(ctx context.Context) {
+	}
+
+	stopTCPHook := func(ctx context.Context) {
+	}
 
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
 
-		startDnsHook(ctx)
+		startDNSHook(ctx)
 		ipaddr, _ := webClient.resolver.resolveConn(webClient.connTarget)
-		stopDnsHook(ctx)
+		stopDNSHook(ctx)
 
-		conn, err := dialer.DialContext(ctx, network, ipaddr)
-		if err != nil {
-			return conn, err
-		}
-		return webClient.connCounter.Bind(conn), nil
+		startTCPHook(ctx)
+		//conn, err := dialer.DialContext(ctx,, network, ipaddr)
+		//if err != nil {
+		//	return conn, err
+		//}
+		stopTCPHook(ctx)
+		return sockettrace.NewSocketTraceX(ctx, dialer, network, ipaddr), nil
 	}
 
 	webClient.httpClient = &http.Client{
@@ -141,10 +155,16 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	}
 
 	var reused bool
+	var remoteAddr string
 
 	connTimer := newTimer()
 	dnsTimer := newTimer()
 	tlsTimer := newTimer()
+	tcpTimer := newTimer()
+	reqTimer := newTimer()
+	waitTimer := newTimer()
+	responseTimer := newTimer()
+
 	clientTrace := &httptrace.ClientTrace{
 
 		TLSHandshakeStart: func() {
@@ -167,11 +187,41 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		},
 
 		GotConn: func(info httptrace.GotConnInfo) {
+			remoteAddr = info.Conn.RemoteAddr().String()
 			connTimer.stop()
+			reqTimer.start()
 			reused = info.Reused
 		},
+
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			reqTimer.stop()
+			waitTimer.start()
+
+		},
+
+		GotFirstResponseByte: func() {
+			waitTimer.stop()
+			responseTimer.start()
+		},
 	}
-	traceCtx := httptrace.WithClientTrace(context.Background(), clientTrace)
+
+	ctx := sockettrace.WithTrace(context.Background(),
+		&sockettrace.ConnTrace{
+			Read: func(i int) {
+				atomic.AddInt64(&webClient.reads, int64(i))
+			},
+			Write: func(i int) {
+				atomic.AddInt64(&webClient.writes, int64(i))
+			},
+			TCPStart: func() {
+				tcpTimer.start()
+			},
+			TCPEstablished: func() {
+				tcpTimer.stop()
+			},
+		})
+
+	traceCtx := httptrace.WithClientTrace(ctx, clientTrace)
 
 	req = req.WithContext(traceCtx)
 
@@ -179,7 +229,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		q := req.URL.Query()
 
 		if webClient.config.ExtraParam {
-			q.Add("extra_parameter_http_ping", fmt.Sprintf("%X", time.Now().UnixMicro()))
+			q.Add("extra_parameter_http_ping", fmt.Sprintf("%measureEntry", time.Now().UnixMicro()))
 		}
 
 		for _, c := range webClient.config.Parameters {
@@ -207,6 +257,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	}
 
 	start := time.Now()
+	//reqTimer.start()
 
 	res, err := webClient.httpClient.Do(req)
 
@@ -224,10 +275,10 @@ func (webClient *WebClient) DoMeasure() *Answer {
 			FailureCause: "I/O error while reading payload",
 		}
 	}
-	_ = res.Body.Close()
-	var d = time.Since(start)
 
-	in, out := webClient.connCounter.DeltaAndReset()
+	_ = res.Body.Close()
+	responseTimer.stop()
+	var d = time.Since(start)
 
 	failed := false
 	failureCause := ""
@@ -237,19 +288,34 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		failureCause = "Server-side error"
 	}
 
-	fmt.Printf("dns:  %d\n", dnsTimer.duration())
-	fmt.Printf("tls:  %d\n", tlsTimer.duration())
-	fmt.Printf("conn: %d\n", connTimer.duration())
+	//fmt.Printf("dns:  %d\n", dnsTimer.duration().Milliseconds())
+	//fmt.Printf("tcp:  %d\n", tcpTimer.duration().Milliseconds())
+	//fmt.Printf("tls:  %d\n", tlsTimer.duration().Milliseconds())
+	//fmt.Printf("conn: %d\n", connTimer.duration().Milliseconds())
+	//fmt.Printf("req:  %d\n", reqTimer.duration().Milliseconds())
+
+	i := atomic.SwapInt64(&webClient.reads, 0)
+	o := atomic.SwapInt64(&webClient.writes, 0)
 
 	return &Answer{
 		Proto:        res.Proto,
 		Duration:     d,
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
-		InBytes:      in,
-		OutBytes:     out,
+		InBytes:      i,
+		OutBytes:     o,
 		SocketReused: reused,
 		Compressed:   !res.Uncompressed,
+
+		DNSDuration:  dnsTimer.duration(),
+		TCPHandshake: tcpTimer.duration(),
+		TLSDuration:  tlsTimer.duration(),
+		ConnDuration: connTimer.duration(),
+		ReqDuration:  reqTimer.duration(),
+		Wait:         waitTimer.duration(),
+		RespDuration: responseTimer.duration(),
+
+		RemoteAddr: remoteAddr,
 
 		IsFailure:    failed,
 		FailureCause: failureCause,

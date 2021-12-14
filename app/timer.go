@@ -5,36 +5,36 @@ import (
 	"time"
 )
 
+var (
+	defaultStartTime = time.UnixMicro(math.MaxInt64)
+	defaultStopTime  = time.UnixMicro(math.MinInt64)
+)
+
 type timer struct {
-	startTime int64
-	stopTime  int64
+	startTime, stopTime time.Time
 }
 
 func newTimer() *timer {
 	return &timer{
-		math.MaxInt64,
-		math.MinInt64,
+		defaultStartTime,
+		defaultStopTime,
 	}
 }
 
-func nowTs() int64 {
-	return time.Now().UnixMilli()
-}
-
 func (t *timer) start() {
-	ts := nowTs()
-	if ts < t.startTime {
+	ts := time.Now()
+	if ts.Before(t.startTime) {
 		t.startTime = ts
 	}
 }
 
 func (t *timer) stop() {
-	ts := nowTs()
-	if ts > t.stopTime {
+	ts := time.Now()
+	if ts.After(t.stopTime) {
 		t.stopTime = ts
 	}
 }
 
-func (t *timer) duration() int64 {
-	return t.stopTime - t.startTime
+func (t *timer) duration() time.Duration {
+	return t.stopTime.Sub(t.startTime)
 }
