@@ -58,14 +58,12 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 				ip = net.ParseIP(*entries)
 			}
 		}
-		if ip != nil {
-			return &net.IPAddr{IP: ip}, nil
+		if ip == nil {
+			return nil, &net.DNSError{Err: "no such addr", Name: addr, IsNotFound: true}
 		}
-		return nil, &net.DNSError{Err: "no such addr", Name: addr, IsNotFound: true}
-
+		return &net.IPAddr{IP: ip}, nil
 	}
 	return net.ResolveIPAddr(resolver.config.IPProtocol, addr)
-
 }
 
 func (*resolver) fullResolveFromRoot(network, host string) (*string, error) {

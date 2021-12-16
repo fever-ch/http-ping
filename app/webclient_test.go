@@ -24,7 +24,7 @@ func TestWithEmbeddedWebServer(t *testing.T) {
 	url := ts.URL
 
 	var webClient *WebClient
-	var answer *Answer
+	var answer *HTTPMeasure
 
 	webClient, _ = NewWebClient(&Config{Target: fmt.Sprintf("%s/500", url)})
 	answer = webClient.DoMeasure()

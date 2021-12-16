@@ -2,13 +2,14 @@ package app
 
 import (
 	"fmt"
+	"github.com/fever-ch/http-ping/stats"
 	"time"
 )
 
-// Answer is the out of a measurement done as an HTTP ping
-type Answer struct {
+// HTTPMeasure is the out of a measurement done as an HTTP ping
+type HTTPMeasure struct {
 	Proto        string
-	Duration     time.Duration
+	Duration     stats.Measure
 	StatusCode   int
 	Bytes        int64
 	InBytes      int64
@@ -16,20 +17,18 @@ type Answer struct {
 	SocketReused bool
 	Compressed   bool
 	RemoteAddr   string
+	TLSEnabled   bool
+	TLSVersion   string
 
-	DNSDuration  time.Duration
-	TCPHandshake time.Duration
-	TLSDuration  time.Duration
-	ConnDuration time.Duration
-	ReqDuration  time.Duration
-	RespDuration time.Duration
-	Wait         time.Duration
+	DNSDuration  stats.Measure
+	TCPHandshake stats.Measure
+	TLSDuration  stats.Measure
+	ConnDuration stats.Measure
+	ReqDuration  stats.Measure
+	RespDuration stats.Measure
+	Wait         stats.Measure
 	IsFailure    bool
 	FailureCause string
-}
-
-func (a *Answer) String() string {
-	return fmt.Sprintf("code=%d size=%d conn-reused=%t time=%.3f ms", a.StatusCode, a.Bytes, a.SocketReused, float64(a.Duration.Nanoseconds())/1e6)
 }
 
 // Pinger is responsible for actually doing the HTTP pings
@@ -57,8 +56,8 @@ func NewPinger(config *Config) (*Pinger, error) {
 }
 
 // Ping actually does the pinging specified in config
-func (pinger *Pinger) Ping() <-chan *Answer {
-	measures := make(chan *Answer)
+func (pinger *Pinger) Ping() <-chan *HTTPMeasure {
+	measures := make(chan *HTTPMeasure)
 	go func() {
 
 		if !pinger.config.DisableKeepAlive {
@@ -75,12 +74,3 @@ func (pinger *Pinger) Ping() <-chan *Answer {
 	}()
 	return measures
 }
-
-//0: 173.212.245.162:443, code=301, size=0 bytes, time=98.616 ms
-//[read: 213 bytes, written 49 bytes]
-//| 81 ms : request
-//|          2 ms : dns resolution
-//|         29 ms : tcp handshake
-//|         49 ms : tls handshake
-//| 15 ms : wait
-//|  4 ms : answer ingestion

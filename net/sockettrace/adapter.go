@@ -9,6 +9,7 @@ import (
 
 type socketTraceEventContextKey struct{}
 
+// ConnTrace is a set of hooks to run at various events of a TCP connection
 type ConnTrace struct {
 	Write          func(size int)
 	Read           func(size int)
@@ -21,17 +22,14 @@ type connAdapter struct {
 	connTrace *ConnTrace
 }
 
-// ContextClientTrace returns the ClientTrace associated with the
+// ContextConnTrace returns the ClientTrace associated with the
 // provided context. If none, it returns nil.
 func ContextConnTrace(ctx context.Context) *ConnTrace {
 	trace, _ := ctx.Value(socketTraceEventContextKey{}).(*ConnTrace)
 	return trace
 }
 
-//func ContextSmartTrace(ctx context.Context) *ConnTrace {
-//	trace, _ := ctx.Value(socketTraceEventContextKey{}).(*ConnTrace)
-//	return trace
-//}
+// WithTrace function binds a specific context.Context to as specific ConnTrace
 func WithTrace(ctx context.Context, trace *ConnTrace) context.Context {
 	if trace == nil {
 		panic("nil trace")
@@ -43,34 +41,28 @@ func WithTrace(ctx context.Context, trace *ConnTrace) context.Context {
 	return ctx
 }
 
-func NewSocketTrace(ctx context.Context, conn net.Conn) net.Conn {
-	socketTraceSocketEventContext, _ := ctx.Value(socketTraceEventContextKey{}).(*ConnTrace)
-
-	return &connAdapter{
-		innerConn: conn,
-		connTrace: socketTraceSocketEventContext,
-	}
-
-}
-
-func NewSocketTraceX(ctx context.Context, dialer *net.Dialer, network, ipaddr string) net.Conn {
-
-	socketTraceSocketEventContext, _ := ctx.Value(socketTraceEventContextKey{}).(*ConnTrace)
+// NewSocketTrace generates a new net.Conn which generates statistics for the current context
+func NewSocketTrace(context context.Context, dialer *net.Dialer, network, ipaddr string) (net.Conn, error) {
+	socketTraceSocketEventContext, _ := context.Value(socketTraceEventContextKey{}).(*ConnTrace)
 
 	if socketTraceSocketEventContext.TCPStart != nil {
 		socketTraceSocketEventContext.TCPStart()
 	}
 
-	conn, _ := dialer.DialContext(ctx, network, ipaddr)
+	conn, err := dialer.DialContext(context, network, ipaddr)
 
 	if socketTraceSocketEventContext.TCPEstablished != nil {
 		socketTraceSocketEventContext.TCPEstablished()
 	}
 
+	if err != nil {
+		return nil, err
+	}
+
 	return &connAdapter{
 		innerConn: conn,
 		connTrace: socketTraceSocketEventContext,
-	}
+	}, nil
 }
 
 // compose modifies t such that it respects the previously-registered hooks in old,

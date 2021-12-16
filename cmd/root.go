@@ -111,7 +111,7 @@ func prepareRootCmd() *cobra.Command {
 					config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
 				}
 			}
-			app.HTTPPing(&config, cmd.OutOrStdout(), cmd.OutOrStderr())
+			app.HTTPPing(&config, cmd.OutOrStdout())
 
 			return nil
 		},

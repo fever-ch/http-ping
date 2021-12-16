@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/fever-ch/http-ping/stats"
 	"math"
 	"time"
 )
@@ -12,6 +13,19 @@ var (
 
 type timer struct {
 	startTime, stopTime time.Time
+}
+
+func (t *timer) toMeasure() stats.Measure {
+	if t.startTime != defaultStartTime && t.stopTime != defaultStopTime {
+		return stats.Measure(t.stopTime.Sub(t.startTime))
+	} else if t.startTime == defaultStartTime {
+		if t.stopTime == defaultStopTime {
+			return stats.MeasureNotInitialized
+		}
+		return stats.MeasureNotStarted
+	} else {
+		return stats.MeasureNotStopped
+	}
 }
 
 func newTimer() *timer {
@@ -37,4 +51,8 @@ func (t *timer) stop() {
 
 func (t *timer) duration() time.Duration {
 	return t.stopTime.Sub(t.startTime)
+}
+
+func (t *timer) measure() stats.Measure {
+	return stats.Measure(t.duration())
 }

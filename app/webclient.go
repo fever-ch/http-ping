@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/fever-ch/http-ping/net/sockettrace"
+	"github.com/fever-ch/http-ping/stats"
 	"io"
 	"io/ioutil"
 	"net"
@@ -70,7 +71,6 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	dialer.Resolver = &net.Resolver{
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			addr, _ := webClient.resolver.resolveConn(address)
-			println("the code around is useful")
 			return net.Dial(network, addr)
 		}}
 
@@ -91,11 +91,6 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 		trace.DNSDone(httptrace.DNSDoneInfo{})
 	}
-	startTCPHook := func(ctx context.Context) {
-	}
-
-	stopTCPHook := func(ctx context.Context) {
-	}
 
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
 
@@ -103,13 +98,7 @@ func NewWebClient(config *Config) (*WebClient, error) {
 		ipaddr, _ := webClient.resolver.resolveConn(webClient.connTarget)
 		stopDNSHook(ctx)
 
-		startTCPHook(ctx)
-		//conn, err := dialer.DialContext(ctx,, network, ipaddr)
-		//if err != nil {
-		//	return conn, err
-		//}
-		stopTCPHook(ctx)
-		return sockettrace.NewSocketTraceX(ctx, dialer, network, ipaddr), nil
+		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
 	}
 
 	webClient.httpClient = &http.Client{
@@ -140,7 +129,7 @@ func NewWebClient(config *Config) (*WebClient, error) {
 }
 
 // DoMeasure evaluates the latency to a specific HTTP/S server
-func (webClient *WebClient) DoMeasure() *Answer {
+func (webClient *WebClient) DoMeasure() *HTTPMeasure {
 	req, _ := http.NewRequest(webClient.config.Method, webClient.config.Target, nil)
 
 	if webClient.httpClient.Jar == nil || !webClient.config.KeepCookies {
@@ -229,7 +218,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 		q := req.URL.Query()
 
 		if webClient.config.ExtraParam {
-			q.Add("extra_parameter_http_ping", fmt.Sprintf("%measureEntry", time.Now().UnixMicro()))
+			q.Add("extra_parameter_http_ping", fmt.Sprintf("%d", time.Now().UnixMicro()))
 		}
 
 		for _, c := range webClient.config.Parameters {
@@ -262,7 +251,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	res, err := webClient.httpClient.Do(req)
 
 	if err != nil {
-		return &Answer{
+		return &HTTPMeasure{
 			IsFailure:    true,
 			FailureCause: err.Error(),
 		}
@@ -270,7 +259,7 @@ func (webClient *WebClient) DoMeasure() *Answer {
 
 	s, err := io.Copy(ioutil.Discard, res.Body)
 	if err != nil {
-		return &Answer{
+		return &HTTPMeasure{
 			IsFailure:    true,
 			FailureCause: "I/O error while reading payload",
 		}
@@ -297,23 +286,35 @@ func (webClient *WebClient) DoMeasure() *Answer {
 	i := atomic.SwapInt64(&webClient.reads, 0)
 	o := atomic.SwapInt64(&webClient.writes, 0)
 
-	return &Answer{
+	var tlsVersion string
+	if res.TLS != nil {
+		code := int(res.TLS.Version) - 0x0301
+		if code >= 0 {
+			tlsVersion = fmt.Sprintf("TLS-1.%d", code)
+		} else {
+			tlsVersion = "SSL-3"
+		}
+	}
+
+	return &HTTPMeasure{
 		Proto:        res.Proto,
-		Duration:     d,
+		Duration:     stats.Measure(d),
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
 		InBytes:      i,
 		OutBytes:     o,
 		SocketReused: reused,
 		Compressed:   !res.Uncompressed,
+		TLSEnabled:   res.TLS != nil,
+		TLSVersion:   tlsVersion,
 
-		DNSDuration:  dnsTimer.duration(),
-		TCPHandshake: tcpTimer.duration(),
-		TLSDuration:  tlsTimer.duration(),
-		ConnDuration: connTimer.duration(),
-		ReqDuration:  reqTimer.duration(),
-		Wait:         waitTimer.duration(),
-		RespDuration: responseTimer.duration(),
+		DNSDuration:  dnsTimer.measure(),
+		TCPHandshake: tcpTimer.measure(),
+		TLSDuration:  tlsTimer.measure(),
+		ConnDuration: connTimer.measure(),
+		ReqDuration:  reqTimer.measure(),
+		Wait:         waitTimer.measure(),
+		RespDuration: responseTimer.measure(),
 
 		RemoteAddr: remoteAddr,
 
