@@ -31,7 +31,6 @@ type WebClient struct {
 	config     *Config
 	url        *url.URL
 	resolver   *resolver
-	cookiejar  cookiejar.Jar
 
 	writes int64
 	reads  int64

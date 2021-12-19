@@ -141,27 +141,6 @@ type measureEntryVisit struct {
 	depth        int
 }
 
-func (entry *measureEntry) hasAValidChild() bool {
-
-	var lookForValidChild func(entry *measureEntry) bool
-
-	lookForValidChild = func(entry *measureEntry) bool {
-		if entry != entry && entry.duration.IsValid() {
-			return true
-		}
-
-		for _, e := range entry.children {
-			if lookForValidChild(e) {
-				return true
-			}
-		}
-
-		return false
-	}
-
-	return lookForValidChild(entry)
-}
-
 func makeTreeList(root *measureEntry) []measureEntryVisit {
 	var list []measureEntryVisit
 

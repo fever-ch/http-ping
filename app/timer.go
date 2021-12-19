@@ -15,19 +15,6 @@ type timer struct {
 	startTime, stopTime time.Time
 }
 
-func (t *timer) toMeasure() stats.Measure {
-	if t.startTime != defaultStartTime && t.stopTime != defaultStopTime {
-		return stats.Measure(t.stopTime.Sub(t.startTime))
-	} else if t.startTime == defaultStartTime {
-		if t.stopTime == defaultStopTime {
-			return stats.MeasureNotInitialized
-		}
-		return stats.MeasureNotStarted
-	} else {
-		return stats.MeasureNotStopped
-	}
-}
-
 func newTimer() *timer {
 	return &timer{
 		defaultStartTime,
