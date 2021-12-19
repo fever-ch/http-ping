@@ -77,6 +77,9 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 
 		ip, err := r.LookupIP(context.Background(), resolver.config.IPProtocol, addr)
 		if err != nil {
+			if dnsError, ok := err.(*net.DNSError); ok {
+				dnsError.Server = ""
+			}
 			return nil, err
 		}
 
