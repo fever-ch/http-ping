@@ -42,9 +42,10 @@ Flags:
       --disable-compression     the client will not request the remote server to compress answers (hence it might actually do it)
       --disable-http2           disable the HTTP/2 protocol
   -K, --disable-keepalive       disable keep-alive feature
-  -d, --dns-cache               cache DNS requests
+      --dns-cache               cache DNS requests
+  -D, --dns-full-resolution     enable full DNS resolution from the root servers
+  -d, --dns-server string       specify an alternate DNS server for resolutions
   -x, --extra-parameter         extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy
-  -D, --full-dns-resolution     enable full dns resolution from the root servers
   -H, --head                    perform HTTP HEAD requests instead of GETs
       --header stringArray      add one or more header, in the form name=value
   -h, --help                    help for http-ping
@@ -54,7 +55,7 @@ Flags:
   -6, --ipv6                    force IPv6 resolution for dual-stacked sites
       --keep-cookies            keep received cookies between requests
       --no-server-error         ignore server errors (5xx), do not handle them as "lost pings"
-      --parameter stringArray   add one or more parameters, in the form name:value
+      --parameter stringArray   add one or more parameters to the query, in the form name:value
   -q, --quiet                   print less details
       --referrer string         define the referrer
       --user-agent string       define a custom user-agent (default "Http-Ping/(devel) (https://github.com/fever-ch/http-ping)")
