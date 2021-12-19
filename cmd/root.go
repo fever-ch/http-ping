@@ -173,7 +173,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().StringVarP(&config.AuthUsername, "auth-username", "", "", "authentication username")
 
-	rootCmd.Flags().StringVarP(&config.AuthPassword, "auth-password", "", "", "authentication username")
+	rootCmd.Flags().StringVarP(&config.AuthPassword, "auth-password", "", "", "authentication password")
 
 	rootCmd.Flags().BoolVarP(&config.DisableHTTP2, "disable-http2", "", false, "disable the HTTP/2 protocol")
 

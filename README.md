@@ -34,7 +34,7 @@ Usage:
 
 Flags:
   -a, --audible-bell            audible ; include a bell (ASCII 0x07) character in the output when any successful answer is received
-      --auth-password string    authentication username
+      --auth-password string    authentication password
       --auth-username string    authentication username
       --conn-target string      force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)
       --cookie stringArray      add one or more cookies, in the form name=value

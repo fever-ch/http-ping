@@ -297,7 +297,7 @@ func (webClient *WebClient) DoMeasure() *HTTPMeasure {
 
 	return &HTTPMeasure{
 		Proto:        res.Proto,
-		Duration:     stats.Measure(d),
+		Measure:      stats.Measure(d),
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
 		InBytes:      i,

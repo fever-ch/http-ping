@@ -39,7 +39,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 			} else {
 				if !measure.IsFailure {
 					if config.LogLevel >= 1 {
-						_, _ = fmt.Fprintf(stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.Duration.ToFloat(time.Millisecond))
+						_, _ = fmt.Fprintf(stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.Measure.ToFloat(time.Millisecond))
 					}
 					if config.LogLevel == 2 {
 						_, _ = fmt.Fprintf(stdout, "          proto=%s, socket reused=%t, compressed=%t\n", measure.Proto, measure.SocketReused, measure.Compressed)
@@ -53,7 +53,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 
 						z := measureEntry{
 							label:    "request and response",
-							duration: measure.Duration,
+							duration: measure.Measure,
 							children: []*measureEntry{
 								{label: "connection setup", duration: measure.ConnDuration,
 									children: []*measureEntry{
@@ -95,7 +95,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 						}
 						_, _ = fmt.Fprintf(stdout, "\n")
 					}
-					latencies = append(latencies, measure.Duration)
+					latencies = append(latencies, measure.Measure)
 
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")

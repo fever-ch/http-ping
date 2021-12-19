@@ -9,7 +9,7 @@ import (
 // HTTPMeasure is the out of a measurement done as an HTTP ping
 type HTTPMeasure struct {
 	Proto        string
-	Duration     stats.Measure
+	Measure      stats.Measure
 	StatusCode   int
 	Bytes        int64
 	InBytes      int64
