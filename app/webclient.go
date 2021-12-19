@@ -88,8 +88,12 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
 
 		startDNSHook(ctx)
-		ipaddr, _ := webClient.resolver.resolveConn(webClient.connTarget)
+		ipaddr, err := webClient.resolver.resolveConn(webClient.connTarget)
 		stopDNSHook(ctx)
+
+		if err != nil {
+			return nil, err
+		}
 
 		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
 	}

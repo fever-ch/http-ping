@@ -60,7 +60,7 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 			}
 		}
 		if ip == nil {
-			return nil, &net.DNSError{Err: "no such addr", Name: addr, IsNotFound: true}
+			return nil, &net.DNSError{Err: "no such host", Name: addr, IsNotFound: true}
 		}
 		return &net.IPAddr{IP: ip}, nil
 	} else if resolver.config.DNSServer != "" {
