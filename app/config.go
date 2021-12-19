@@ -43,6 +43,7 @@ type Config struct {
 	AuthPassword       string
 	DisableHTTP2       bool
 	FullDNS            bool
+	DNSServer          string
 	CacheDNSRequests   bool
 	KeepCookies        bool
 }

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"github.com/domainr/dnsr"
 	"net"
@@ -62,6 +63,25 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 			return nil, &net.DNSError{Err: "no such addr", Name: addr, IsNotFound: true}
 		}
 		return &net.IPAddr{IP: ip}, nil
+	} else if resolver.config.DNSServer != "" {
+		dnsTarget := fmt.Sprintf("%s:53", resolver.config.DNSServer)
+
+		r := &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{}
+
+				return d.DialContext(ctx, network, dnsTarget)
+			},
+		}
+
+		ip, err := r.LookupIP(context.Background(), resolver.config.IPProtocol, addr)
+		if err != nil {
+			return nil, err
+		}
+
+		return &net.IPAddr{IP: ip[0]}, nil
+
 	}
 	return net.ResolveIPAddr(resolver.config.IPProtocol, addr)
 }

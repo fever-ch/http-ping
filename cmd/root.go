@@ -6,6 +6,7 @@ import (
 	"github.com/fever-ch/http-ping/app"
 	"github.com/spf13/cobra"
 	"math"
+	"net"
 	"regexp"
 	"time"
 )
@@ -75,6 +76,17 @@ func prepareRootCmd() *cobra.Command {
 				config.LogLevel = 0
 			} else {
 				config.LogLevel = 1
+			}
+
+			if config.FullDNS && config.DNSServer != "" {
+				return errors.New("DNS server cannot specified when full DNS resolutions is enabled")
+			}
+
+			if config.DNSServer != "" {
+				ip := net.ParseIP(config.DNSServer)
+				if ip == nil {
+					return errors.New("DNS server should be an IPv4 or IPv6 address")
+				}
 			}
 
 			if head {
@@ -147,7 +159,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().StringArrayVarP(&headers, "header", "", []string{}, "add one or more header, in the form name=value")
 
-	rootCmd.Flags().StringArrayVarP(&parameters, "parameter", "", []string{}, "add one or more parameters, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&parameters, "parameter", "", []string{}, "add one or more parameters to the query, in the form name:value")
 
 	rootCmd.Flags().BoolVarP(&config.IgnoreServerErrors, "no-server-error", "", false, "ignore server errors (5xx), do not handle them as \"lost pings\"")
 
@@ -165,9 +177,11 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.DisableHTTP2, "disable-http2", "", false, "disable the HTTP/2 protocol")
 
-	rootCmd.Flags().BoolVarP(&config.FullDNS, "full-dns-resolution", "D", false, "enable full dns resolution from the root servers")
+	rootCmd.Flags().BoolVarP(&config.FullDNS, "dns-full-resolution", "D", false, "enable full DNS resolution from the root servers")
 
-	rootCmd.Flags().BoolVarP(&config.CacheDNSRequests, "dns-cache", "d", false, "cache DNS requests")
+	rootCmd.Flags().StringVarP(&config.DNSServer, "dns-server", "d", "", "specify an alternate DNS server for resolutions")
+
+	rootCmd.Flags().BoolVarP(&config.CacheDNSRequests, "dns-cache", "", false, "cache DNS requests")
 
 	rootCmd.Flags().BoolVarP(&config.KeepCookies, "keep-cookies", "", false, "keep received cookies between requests")
 
