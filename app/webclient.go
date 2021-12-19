@@ -67,12 +67,6 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 	dialer := &net.Dialer{}
 
-	dialer.Resolver = &net.Resolver{
-		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-			addr, _ := webClient.resolver.resolveConn(address)
-			return net.Dial(network, addr)
-		}}
-
 	startDNSHook := func(ctx context.Context) {
 		trace := httptrace.ContextClientTrace(ctx)
 		if trace == nil || trace.DNSStart == nil {
