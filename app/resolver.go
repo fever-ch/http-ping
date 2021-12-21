@@ -33,7 +33,7 @@ func (resolver *resolver) resolveConn(addr string) (string, error) {
 	}
 }
 
-func resolveWithSpecificServerInternal(network, server string, host string) ([]*net.IP, error) {
+func resolveWithSpecificServerQtype(qtype uint16, server string, host string) ([]*net.IP, error) {
 	var ips []*net.IP
 
 	msg := new(dns.Msg)
@@ -41,11 +41,7 @@ func resolveWithSpecificServerInternal(network, server string, host string) ([]*
 	msg.RecursionDesired = true
 	msg.Question = []dns.Question{}
 
-	if network == "ip6" {
-		msg.Question = append(msg.Question, dns.Question{Name: host, Qtype: dns.TypeAAAA, Qclass: dns.ClassINET})
-	} else if network == "ip4" {
-		msg.Question = append(msg.Question, dns.Question{Name: host, Qtype: dns.TypeA, Qclass: dns.ClassINET})
-	}
+	msg.Question = append(msg.Question, dns.Question{Name: host, Qtype: qtype, Qclass: dns.ClassINET})
 
 	c := new(dns.Client)
 
@@ -68,49 +64,48 @@ func resolveWithSpecificServerInternal(network, server string, host string) ([]*
 func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, error) {
 
 	type resolveAnswer struct {
-		ip  []*net.IP
-		err error
+		ip    []*net.IP
+		err   error
+		qtype uint16
 	}
-	if network == "ip" {
+	if network == "ip4" {
+		return resolveWithSpecificServerQtype(dns.TypeA, server, host)
+	} else if network == "ip6" {
+		return resolveWithSpecificServerQtype(dns.TypeAAAA, server, host)
+	} else {
 		var ips []*net.IP
 
 		answersChan := make(chan *resolveAnswer)
-		ret := func(prot string) {
-			out, err := resolveWithSpecificServerInternal(prot, server, host)
+		ret := func(qtype uint16) {
+			out, err := resolveWithSpecificServerQtype(qtype, server, host)
 
-			answersChan <- &resolveAnswer{out, err}
+			answersChan <- &resolveAnswer{out, err, qtype}
 
 		}
-		go ret("ip4")
-		go ret("ip6")
-
-		var answers []*resolveAnswer
+		go ret(dns.TypeA)
+		go ret(dns.TypeAAAA)
 
 		oneSucceeded := false
 		for i := 0; i < 2; i++ {
-			answer := <-answersChan
+			if answer := <-answersChan; answer.err == nil {
 
-			if answer.err == nil {
+				if len(answer.ip) > 0 {
+					if answer.qtype == dns.TypeA {
+						return answer.ip, nil
+					}
+					ips = append(ips, answer.ip...)
+				}
+
 				oneSucceeded = true
 			}
-
-			answers = append(answers, answer)
 
 		}
 
 		if !oneSucceeded {
 			return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
 		}
-
-		for _, answer := range answers {
-			if answer.err == nil {
-				ips = append(ips, answer.ip...)
-			}
-		}
-
 		return ips, nil
 	}
-	return resolveWithSpecificServerInternal(network, server, host)
 
 }
 
