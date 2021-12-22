@@ -157,7 +157,7 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.DisableKeepAlive, "disable-keepalive", "K", false, "disable keep-alive feature")
 
-	rootCmd.Flags().DurationVarP(&config.Wait, "wait", "w", time.Second, "define the time for a response before timing out")
+	rootCmd.Flags().DurationVarP(&config.Wait, "wait", "w", 10*time.Second, "define the time for a response before timing out")
 
 	rootCmd.Flags().DurationVarP(&config.Interval, "interval", "i", 1*time.Second, "define the wait time between each request")
 
