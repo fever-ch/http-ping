@@ -199,6 +199,8 @@ func prepareRootCmd() *cobra.Command {
 
 	rootCmd.Flags().BoolVarP(&config.KeepCookies, "keep-cookies", "", false, "keep received cookies between requests")
 
+	rootCmd.Flags().BoolVarP(&config.FollowRedirects, "follow-redirects", "F", false, "follow HTTP redirects (codes 3xx)")
+
 	return rootCmd
 }
 

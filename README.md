@@ -46,6 +46,7 @@ Flags:
   -D, --dns-full-resolution     enable full DNS resolution from the root servers
   -d, --dns-server string       specify an alternate DNS server for resolutions
   -x, --extra-parameter         extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy
+  -F, --follow-redirects        follow HTTP redirects (codes 3xx)  
   -H, --head                    perform HTTP HEAD requests instead of GETs
       --header stringArray      add one or more header, in the form name=value
   -h, --help                    help for http-ping

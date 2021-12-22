@@ -60,4 +60,5 @@ type Config struct {
 	DNSServer          string
 	CacheDNSRequests   bool
 	KeepCookies        bool
+	FollowRedirects    bool
 }

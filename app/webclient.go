@@ -55,13 +55,10 @@ func init() {
 	_, _ = x509.SystemCertPool()
 }
 
-// NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
-func NewWebClient(config *Config) (*WebClient, error) {
-	webClient := WebClient{config: config}
-	webClient.url, _ = url.Parse(config.Target)
-	webClient.resolver = newResolver(config)
+func updateConnTarget(webClient *WebClient) {
+	if webClient.config.ConnTarget == "" {
+		webClient.resolver = newResolver(webClient.config)
 
-	if config.ConnTarget == "" {
 		webClient.connTarget = webClient.url.Hostname()
 		ipAddr := webClient.url.Hostname()
 
@@ -76,8 +73,16 @@ func NewWebClient(config *Config) (*WebClient, error) {
 			webClient.connTarget = fmt.Sprintf("%s:%s", ipAddr, port)
 		}
 	} else {
-		webClient.connTarget = config.ConnTarget
+		webClient.connTarget = webClient.config.ConnTarget
 	}
+}
+
+// NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
+func NewWebClient(config *Config) (*WebClient, error) {
+	webClient := WebClient{config: config}
+	webClient.url, _ = url.Parse(config.Target)
+
+	updateConnTarget(&webClient)
 
 	dialer := &net.Dialer{}
 
@@ -114,9 +119,6 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 	webClient.httpClient = &http.Client{
 		Timeout: webClient.config.Wait,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
 		Transport: &http.Transport{
 			Proxy:       http.ProxyFromEnvironment,
 			DialContext: dialCtx,
@@ -140,7 +142,20 @@ func NewWebClient(config *Config) (*WebClient, error) {
 }
 
 // DoMeasure evaluates the latency to a specific HTTP/S server
-func (webClient *WebClient) DoMeasure() *HTTPMeasure {
+func (webClient *WebClient) DoMeasure(followRedirect bool) *HTTPMeasure {
+
+	webClient.httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if followRedirect {
+			webClient.config.Target = req.URL.String()
+			webClient.url = req.URL
+			// TODO avoid write to stdout from webclient
+			fmt.Printf("       →  Redirected to %s\n\n", req.URL.String())
+			updateConnTarget(webClient)
+			return nil
+		}
+		return http.ErrUseLastResponse
+	}
+
 	req, _ := http.NewRequest(webClient.config.Method, webClient.config.Target, nil)
 
 	if webClient.httpClient.Jar == nil || !webClient.config.KeepCookies {
@@ -288,12 +303,6 @@ func (webClient *WebClient) DoMeasure() *HTTPMeasure {
 		failureCause = "Server-side error"
 	}
 
-	//fmt.Printf("dns:  %d\n", dnsTimer.duration().Milliseconds())
-	//fmt.Printf("tcp:  %d\n", tcpTimer.duration().Milliseconds())
-	//fmt.Printf("tls:  %d\n", tlsTimer.duration().Milliseconds())
-	//fmt.Printf("conn: %d\n", connTimer.duration().Milliseconds())
-	//fmt.Printf("req:  %d\n", reqTimer.duration().Milliseconds())
-
 	i := atomic.SwapInt64(&webClient.reads, 0)
 	o := atomic.SwapInt64(&webClient.writes, 0)
 
@@ -331,6 +340,7 @@ func (webClient *WebClient) DoMeasure() *HTTPMeasure {
 
 		IsFailure:    failed,
 		FailureCause: failureCause,
+		Headers:      &res.Header,
 	}
 
 }

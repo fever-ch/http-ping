@@ -17,6 +17,7 @@ package app
 import (
 	"fmt"
 	"github.com/fever-ch/http-ping/stats"
+	"net/http"
 	"time"
 )
 
@@ -43,6 +44,7 @@ type HTTPMeasure struct {
 	Wait         stats.Measure
 	IsFailure    bool
 	FailureCause string
+	Headers      *http.Header
 }
 
 // Pinger is responsible for actually doing the HTTP pings
@@ -74,13 +76,13 @@ func (pinger *Pinger) Ping() <-chan *HTTPMeasure {
 	measures := make(chan *HTTPMeasure)
 	go func() {
 
-		if !pinger.config.DisableKeepAlive {
-			pinger.client.DoMeasure()
+		if !pinger.config.DisableKeepAlive || pinger.config.FollowRedirects {
+			pinger.client.DoMeasure(pinger.config.FollowRedirects)
 			time.Sleep(pinger.config.Interval)
 		}
 
 		for a := int64(0); a < pinger.config.Count; a++ {
-			measures <- pinger.client.DoMeasure()
+			measures <- pinger.client.DoMeasure(false)
 			time.Sleep(pinger.config.Interval)
 		}
 
