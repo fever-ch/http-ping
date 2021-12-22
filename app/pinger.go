@@ -51,8 +51,9 @@ type HTTPMeasure struct {
 
 // Pinger is responsible for actually doing the HTTP pings
 type Pinger struct {
-	client *WebClient
-	config *Config
+	client           *WebClient
+	config           *Config
+	RedirectCallBack func(url string)
 }
 
 // NewPinger builds a new Pinger
@@ -63,6 +64,12 @@ func NewPinger(config *Config) (*Pinger, error) {
 	pinger.config = config
 
 	client, err := NewWebClient(config)
+
+	client.RedirectCallBack = func(url string) {
+		if pinger.RedirectCallBack != nil {
+			pinger.RedirectCallBack(url)
+		}
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("%s (%s)", err, config.IPProtocol)

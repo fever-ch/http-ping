@@ -42,11 +42,12 @@ var portMap = map[string]string{
 
 // WebClient represents an HTTP/S client designed to do performance analysis
 type WebClient struct {
-	httpClient *http.Client
-	connTarget string
-	config     *Config
-	url        *url.URL
-	resolver   *resolver
+	httpClient       *http.Client
+	connTarget       string
+	config           *Config
+	url              *url.URL
+	resolver         *resolver
+	RedirectCallBack func(url string)
 
 	writes int64
 	reads  int64
@@ -150,8 +151,9 @@ func (webClient *WebClient) DoMeasure(followRedirect bool) *HTTPMeasure {
 		if followRedirect {
 			webClient.config.Target = req.URL.String()
 			webClient.url = req.URL
-			// TODO avoid write to stdout from webclient
-			fmt.Printf("       →  Redirected to %s\n\n", req.URL.String())
+			if webClient.RedirectCallBack != nil {
+				webClient.RedirectCallBack(req.URL.String())
+			}
 			updateConnTarget(webClient)
 			return nil
 		}
