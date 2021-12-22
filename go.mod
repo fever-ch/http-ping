@@ -3,14 +3,17 @@ module github.com/fever-ch/http-ping
 go 1.17
 
 require (
-	github.com/domainr/dnsr v0.0.0-20211208081947-6683a863f8f7
-	github.com/miekg/dns v1.1.43
-	github.com/spf13/cobra v1.2.1
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	github.com/domainr/dnsr v0.0.0-20211217081932-6720aab3de6f
+	github.com/miekg/dns v1.1.44
+	github.com/spf13/cobra v1.3.0
+	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
 )
 
 require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
+	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
