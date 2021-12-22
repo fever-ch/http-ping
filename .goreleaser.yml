@@ -22,13 +22,7 @@ builds:
         - sh -c 'upx "{{ .Path }}" || true' # run in
 
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      windows: Windows
-      freebsd: FreeBSD
-      386: i386
-      amd64: x86_64
+  -
     format_overrides:
       - goos: windows
         format: zip
