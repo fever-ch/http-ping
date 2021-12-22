@@ -26,6 +26,7 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -51,3 +52,15 @@ dockers:
       - "ghcr.io/fever-ch/http-ping:v{{ .Major }}.{{ .Minor }}"
       - "ghcr.io/fever-ch/http-ping:latest"
     dockerfile: Dockerfile.goreleaser
+nfpms:
+  -
+    homepage: https://github.com/fever-ch/http-ping
+    description: Http-Ping is similar to the usual ping networking utility but instead of working on top of ICMP, it works on top of HTTP/S.
+    maintainer: Raphaël P. Barazzutti
+    license: Apache 2.0
+    vendor: Fever-Ch
+    bindir: /usr/bin
+    formats:
+      - apk
+      - deb
+      - rpm
