@@ -17,6 +17,10 @@ builds:
       - 386
       - amd64
       - arm64
+    hooks:
+      post:
+        - sh -c 'upx "{{ .Path }}" || true' # run in
+
 archives:
   - replacements:
       darwin: Darwin
