@@ -19,7 +19,7 @@ builds:
       - arm64
     hooks:
       post:
-        - sh -c 'upx "{{ .Path }}" || true' # run in
+        - sh -c 'upx "{{ .Path }}" || true' # run in sh in order to not fail when upx cannot run on an arch
 
 archives:
   -
@@ -64,3 +64,11 @@ nfpms:
       - apk
       - deb
       - rpm
+brews:
+  -
+    tap:
+      owner: fever-ch
+      name: homebrew-tap
+    homepage: 'Http-Ping is similar to the usual ping networking utility but instead of working on top of ICMP, it works on top of HTTP/S.'
+    description: 'Http-Ping is similar to the usual ping networking utility but instead of working on top of ICMP, it works on top of HTTP/S.'
+

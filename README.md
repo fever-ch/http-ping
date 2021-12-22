@@ -104,9 +104,39 @@ HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping HEAD
 round-trip min/avg/max/stddev = 53.250/53.250/53.250/0.000 ms
 ```
 _note: the latency contribution tree only covers the main steps of the HTTP exchange, thus the sum doesn't fully match._
+
+## Install on Linux/FreeBSD/MacOS
+
+The [releases](https://github.com/fever-ch/http-ping/releases) are providing packages for the following systems:
+- `deb`: Debian, Ubuntu, ...
+- `rpm`: RedHat, CentOS, SuSE, ...
+- `apk`: Alpine
+
+## Install with Homebrew (Mac/Linux)
+
+A third party repository, [fever-ch/tap](https://www.github.com/fever-ch/homebrew-tap), provides up-to-date formula to deploy `http-ping` easily on platforms supported by [Homebrew](https://brew.sh).
+
+To install using Brew, run the following command:
+```shell
+> brew install fever-ch/tap/http-ping
+```
+
+## Install on Linux/FreeBSD/MacOS/Windows
+
+The [releases](https://github.com/fever-ch/http-ping/releases) are also containing archive which contains the executable file, `tar.gz` files for Linux/FreeBSD/MacOS ans `zip` files for Windows.
+
+
 ## Use with Docker
 ```shell
-docker run --rm feverch/http-ping
+> docker run --rm feverch/http-ping
 ```
 
 Note: images are published as `feverch/http-ping` (Central Docker registry) or `ghcr.io/fever-ch/http-ping` (Github Container registry)
+
+
+## Build your own binaries
+
+You can easily build `http-ping`, if `golang` is available on your system.
+```shell
+> go install github.com/fever-ch/http-ping@latest
+```
