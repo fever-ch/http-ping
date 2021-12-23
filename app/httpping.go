@@ -50,6 +50,8 @@ func HTTPPing(config *Config, stdout io.Writer) {
 	var latencies []stats.Measure
 	attempts, failures := 0, 0
 
+	measureSum := &HTTPMeasure{}
+
 	var loop = true
 	for loop {
 		select {
@@ -69,13 +71,21 @@ func HTTPPing(config *Config, stdout io.Writer) {
 							_, _ = fmt.Fprintf(stdout, "          tls version=%s\n", measure.TLSVersion)
 						}
 
-						_, _ = fmt.Fprintf(stdout, "\n")
+						measureSum.Total += measure.Total
+						measureSum.ConnDuration += measure.ConnDuration
+						measureSum.DNSDuration += measure.DNSDuration
+						measureSum.TCPHandshake += measure.TCPHandshake
+						measureSum.TLSDuration += measure.TLSDuration
+						measureSum.ReqDuration += measure.ReqDuration
+						measureSum.Wait += measure.Wait
+						measureSum.RespDuration += measure.RespDuration
 
-						l := measureToMeasureEntryVisits(measure)
+						_, _ = fmt.Fprintf(stdout, "\n")
 
 						_, _ = fmt.Fprintf(stdout, "          latency contributions:\n")
 
-						drawEntryVisits(l, stdout)
+						drawMeasure(measure, stdout)
+
 						_, _ = fmt.Fprintf(stdout, "\n")
 					}
 					latencies = append(latencies, measure.Total)
@@ -105,15 +115,34 @@ func HTTPPing(config *Config, stdout io.Writer) {
 		lossRate = float64(100*failures) / float64(attempts)
 	}
 
+	success := int64(attempts - failures)
+
 	_, _ = fmt.Fprintf(stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, attempts-failures, lossRate)
 
 	if len(latencies) > 0 {
 		_, _ = fmt.Fprintf(stdout, "%s\n", stats.PingStatsFromLatencies(latencies).String())
+
+		if config.LogLevel == 2 {
+			measureSum.Total = stats.Measure(int64(measureSum.Total) / success)
+			measureSum.ConnDuration = stats.Measure(int64(measureSum.ConnDuration) / success)
+			measureSum.DNSDuration = stats.Measure(int64(measureSum.DNSDuration) / success)
+			measureSum.TCPHandshake = stats.Measure(int64(measureSum.TCPHandshake) / success)
+			measureSum.TLSDuration = stats.Measure(int64(measureSum.TLSDuration) / success)
+			measureSum.ReqDuration = stats.Measure(int64(measureSum.ReqDuration) / success)
+			measureSum.Wait = stats.Measure(int64(measureSum.Wait) / success)
+			measureSum.RespDuration = stats.Measure(int64(measureSum.RespDuration) / success)
+
+			measureSum.TLSEnabled = measureSum.TLSDuration > 0
+
+			_, _ = fmt.Fprintf(stdout, "\naverage latency contributions:\n")
+
+			drawMeasure(measureSum, stdout)
+		}
 	}
 
 }
 
-func measureToMeasureEntryVisits(measure *HTTPMeasure) []measureEntryVisit {
+func drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
 	entries := measureEntry{
 		label:    "request and response",
 		duration: measure.Total,
@@ -133,10 +162,8 @@ func measureToMeasureEntryVisits(measure *HTTPMeasure) []measureEntryVisit {
 		entries.children[0].children = entries.children[0].children[0:2]
 	}
 
-	return makeTreeList(&entries)
-}
+	l := makeTreeList(&entries)
 
-func drawEntryVisits(l []measureEntryVisit, stdout io.Writer) {
 	for i, e := range l {
 		pipes := make([]string, e.depth)
 		for j := 0; j < e.depth; j++ {
