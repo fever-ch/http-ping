@@ -17,9 +17,6 @@ builds:
       - 386
       - amd64
       - arm64
-    hooks:
-      post:
-        - sh -c 'upx "{{ .Path }}" || true' # run in sh in order to not fail when upx cannot run on an arch
 
 archives:
   -
