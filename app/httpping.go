@@ -59,7 +59,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 			} else {
 				if !measure.IsFailure {
 					if config.LogLevel >= 1 {
-						_, _ = fmt.Fprintf(stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.Measure.ToFloat(time.Millisecond))
+						_, _ = fmt.Fprintf(stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.Total.ToFloat(time.Millisecond))
 					}
 					if config.LogLevel == 2 {
 						_, _ = fmt.Fprintf(stdout, "          proto=%s, socket reused=%t, compressed=%t\n", measure.Proto, measure.SocketReused, measure.Compressed)
@@ -71,51 +71,14 @@ func HTTPPing(config *Config, stdout io.Writer) {
 
 						_, _ = fmt.Fprintf(stdout, "\n")
 
-						z := measureEntry{
-							label:    "request and response",
-							duration: measure.Measure,
-							children: []*measureEntry{
-								{label: "connection setup", duration: measure.ConnDuration,
-									children: []*measureEntry{
-										{label: "DNS resolution", duration: measure.DNSDuration},
-										{label: "TCP handshake", duration: measure.TCPHandshake},
-										{label: "TLS handshake", duration: measure.TLSDuration},
-									}},
-								{label: "request sending", duration: measure.ReqDuration},
-								{label: "wait", duration: measure.Wait},
-								{label: "response ingestion", duration: measure.RespDuration},
-							},
-						}
-
-						if !measure.TLSEnabled {
-							z.children[0].children = z.children[0].children[0:2]
-						}
-
-						l := makeTreeList(&z)
+						l := measureToMeasureEntryVisits(measure)
 
 						_, _ = fmt.Fprintf(stdout, "          latency contributions:\n")
-						for i, e := range l {
-							pipes := make([]string, e.depth)
-							for j := 0; j < e.depth; j++ {
-								if i+1 >= len(l) || l[i+1].depth-1 < j {
-									pipes[j] = " └─"
-								} else if j == e.depth-1 {
-									pipes[j] = " ├─"
-								} else {
-									pipes[j] = " │ "
-								}
 
-							}
-							_, _ = fmt.Fprintf(stdout, "          ")
-							for i := 0; i < e.depth; i++ {
-								_, _ = fmt.Fprintf(stdout, "          %s ", pipes[i])
-							}
-
-							_, _ = fmt.Fprintf(stdout, "%6.1f ms %s\n", e.measureEntry.duration.ToFloat(time.Millisecond), e.measureEntry.label)
-						}
+						drawEntryVisits(l, stdout)
 						_, _ = fmt.Fprintf(stdout, "\n")
 					}
-					latencies = append(latencies, measure.Measure)
+					latencies = append(latencies, measure.Total)
 
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")
@@ -148,6 +111,51 @@ func HTTPPing(config *Config, stdout io.Writer) {
 		_, _ = fmt.Fprintf(stdout, "%s\n", stats.PingStatsFromLatencies(latencies).String())
 	}
 
+}
+
+func measureToMeasureEntryVisits(measure *HTTPMeasure) []measureEntryVisit {
+	entries := measureEntry{
+		label:    "request and response",
+		duration: measure.Total,
+		children: []*measureEntry{
+			{label: "connection setup", duration: measure.ConnDuration,
+				children: []*measureEntry{
+					{label: "DNS resolution", duration: measure.DNSDuration},
+					{label: "TCP handshake", duration: measure.TCPHandshake},
+					{label: "TLS handshake", duration: measure.TLSDuration},
+				}},
+			{label: "request sending", duration: measure.ReqDuration},
+			{label: "wait", duration: measure.Wait},
+			{label: "response ingestion", duration: measure.RespDuration},
+		},
+	}
+	if !measure.TLSEnabled {
+		entries.children[0].children = entries.children[0].children[0:2]
+	}
+
+	return makeTreeList(&entries)
+}
+
+func drawEntryVisits(l []measureEntryVisit, stdout io.Writer) {
+	for i, e := range l {
+		pipes := make([]string, e.depth)
+		for j := 0; j < e.depth; j++ {
+			if i+1 >= len(l) || l[i+1].depth-1 < j {
+				pipes[j] = " └─"
+			} else if j == e.depth-1 {
+				pipes[j] = " ├─"
+			} else {
+				pipes[j] = " │ "
+			}
+
+		}
+		_, _ = fmt.Fprintf(stdout, "          ")
+		for i := 0; i < e.depth; i++ {
+			_, _ = fmt.Fprintf(stdout, "          %s ", pipes[i])
+		}
+
+		_, _ = fmt.Fprintf(stdout, "%6.1f ms %s\n", e.measureEntry.duration.ToFloat(time.Millisecond), e.measureEntry.label)
+	}
 }
 
 type measureEntry struct {

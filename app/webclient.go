@@ -322,7 +322,7 @@ func (webClient *WebClient) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	return &HTTPMeasure{
 		Proto:        res.Proto,
-		Measure:      stats.Measure(d),
+		Total:        stats.Measure(d),
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
 		InBytes:      i,
