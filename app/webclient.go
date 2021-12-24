@@ -329,7 +329,7 @@ func (webClient *WebClient) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	return &HTTPMeasure{
 		Proto:        res.Proto,
-		Total:        stats.Measure(d),
+		TotalTime:    stats.Measure(d),
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
 		InBytes:      i,
@@ -339,13 +339,13 @@ func (webClient *WebClient) DoMeasure(followRedirect bool) *HTTPMeasure {
 		TLSEnabled:   res.TLS != nil,
 		TLSVersion:   tlsVersion,
 
-		DNSDuration:  dnsTimer.measure(),
-		TCPHandshake: tcpTimer.measure(),
-		TLSDuration:  tlsTimer.measure(),
-		ConnDuration: connTimer.measure(),
-		ReqDuration:  reqTimer.measure(),
-		Wait:         waitTimer.measure(),
-		RespDuration: responseTimer.measure(),
+		DNSResolution:     dnsTimer.measure(),
+		TCPHandshake:      tcpTimer.measure(),
+		TLSDuration:       tlsTimer.measure(),
+		ConnEstablishment: connTimer.measure(),
+		RequestSending:    reqTimer.measure(),
+		Wait:              waitTimer.measure(),
+		ResponseIngesting: responseTimer.measure(),
 
 		RemoteAddr: remoteAddr,
 

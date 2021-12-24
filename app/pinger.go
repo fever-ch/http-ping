@@ -25,8 +25,8 @@ import (
 
 // HTTPMeasure is the out of a measurement done as an HTTP ping
 type HTTPMeasure struct {
-	Proto        string
-	Total        stats.Measure
+	Proto string
+
 	StatusCode   int
 	Bytes        int64
 	InBytes      int64
@@ -37,13 +37,15 @@ type HTTPMeasure struct {
 	TLSEnabled   bool
 	TLSVersion   string
 
-	DNSDuration  stats.Measure
-	TCPHandshake stats.Measure
-	TLSDuration  stats.Measure
-	ConnDuration stats.Measure
-	ReqDuration  stats.Measure
-	RespDuration stats.Measure
-	Wait         stats.Measure
+	TotalTime         stats.Measure
+	DNSResolution     stats.Measure
+	TCPHandshake      stats.Measure
+	TLSDuration       stats.Measure
+	ConnEstablishment stats.Measure
+	RequestSending    stats.Measure
+	ResponseIngesting stats.Measure
+	Wait              stats.Measure
+
 	IsFailure    bool
 	FailureCause string
 	Headers      *http.Header

@@ -51,9 +51,9 @@ func HTTPPing(config *Config, stdout io.Writer) {
 	attempts, failures := 0, 0
 
 	measureSum := &HTTPMeasure{
-		DNSDuration:  stats.MeasureNotValid,
-		TCPHandshake: stats.MeasureNotValid,
-		TLSDuration:  stats.MeasureNotValid}
+		DNSResolution: stats.MeasureNotValid,
+		TCPHandshake:  stats.MeasureNotValid,
+		TLSDuration:   stats.MeasureNotValid}
 
 	var loop = true
 	for loop {
@@ -64,7 +64,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 			} else {
 				if !measure.IsFailure {
 					if config.LogLevel >= 1 {
-						_, _ = fmt.Fprintf(stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.Total.ToFloat(time.Millisecond))
+						_, _ = fmt.Fprintf(stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.TotalTime.ToFloat(time.Millisecond))
 					}
 					if config.LogLevel == 2 {
 						_, _ = fmt.Fprintf(stdout, "          proto=%s, socket reused=%t, compressed=%t\n", measure.Proto, measure.SocketReused, measure.Compressed)
@@ -74,15 +74,15 @@ func HTTPPing(config *Config, stdout io.Writer) {
 							_, _ = fmt.Fprintf(stdout, "          tls version=%s\n", measure.TLSVersion)
 						}
 
-						measureSum.Total += measure.Total
+						measureSum.TotalTime += measure.TotalTime
 
-						measureSum.ConnDuration = measureSum.ConnDuration.SumIfValid(measure.ConnDuration)
-						measureSum.DNSDuration = measureSum.DNSDuration.SumIfValid(measure.DNSDuration)
+						measureSum.ConnEstablishment = measureSum.ConnEstablishment.SumIfValid(measure.ConnEstablishment)
+						measureSum.DNSResolution = measureSum.DNSResolution.SumIfValid(measure.DNSResolution)
 						measureSum.TCPHandshake = measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
 						measureSum.TLSDuration = measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
-						measureSum.ReqDuration += measure.ReqDuration
+						measureSum.RequestSending += measure.RequestSending
 						measureSum.Wait += measure.Wait
-						measureSum.RespDuration += measure.RespDuration
+						measureSum.ResponseIngesting += measure.ResponseIngesting
 
 						_, _ = fmt.Fprintf(stdout, "\n")
 
@@ -92,7 +92,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 
 						_, _ = fmt.Fprintf(stdout, "\n")
 					}
-					latencies = append(latencies, measure.Total)
+					latencies = append(latencies, measure.TotalTime)
 
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")
@@ -127,14 +127,14 @@ func HTTPPing(config *Config, stdout io.Writer) {
 		_, _ = fmt.Fprintf(stdout, "%s\n", stats.PingStatsFromLatencies(latencies).String())
 
 		if config.LogLevel == 2 {
-			measureSum.Total = measureSum.Total.Divide(success)
-			measureSum.ConnDuration = measureSum.ConnDuration.Divide(success)
-			measureSum.DNSDuration = measureSum.DNSDuration.Divide(success)
+			measureSum.TotalTime = measureSum.TotalTime.Divide(success)
+			measureSum.ConnEstablishment = measureSum.ConnEstablishment.Divide(success)
+			measureSum.DNSResolution = measureSum.DNSResolution.Divide(success)
 			measureSum.TCPHandshake = measureSum.TCPHandshake.Divide(success)
 			measureSum.TLSDuration = measureSum.TLSDuration.Divide(success)
-			measureSum.ReqDuration = measureSum.ReqDuration.Divide(success)
+			measureSum.RequestSending = measureSum.RequestSending.Divide(success)
 			measureSum.Wait = measureSum.Wait.Divide(success)
-			measureSum.RespDuration = measureSum.RespDuration.Divide(success)
+			measureSum.ResponseIngesting = measureSum.ResponseIngesting.Divide(success)
 
 			measureSum.TLSEnabled = measureSum.TLSDuration > 0
 
@@ -149,17 +149,17 @@ func HTTPPing(config *Config, stdout io.Writer) {
 func drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
 	entries := measureEntry{
 		label:    "request and response",
-		duration: measure.Total,
+		duration: measure.TotalTime,
 		children: []*measureEntry{
-			{label: "connection setup", duration: measure.ConnDuration,
+			{label: "connection setup", duration: measure.ConnEstablishment,
 				children: []*measureEntry{
-					{label: "DNS resolution", duration: measure.DNSDuration},
+					{label: "DNS resolution", duration: measure.DNSResolution},
 					{label: "TCP handshake", duration: measure.TCPHandshake},
 					{label: "TLS handshake", duration: measure.TLSDuration},
 				}},
-			{label: "request sending", duration: measure.ReqDuration},
+			{label: "request sending", duration: measure.RequestSending},
 			{label: "wait", duration: measure.Wait},
-			{label: "response ingestion", duration: measure.RespDuration},
+			{label: "response ingestion", duration: measure.ResponseIngesting},
 		},
 	}
 	if !measure.TLSEnabled {
