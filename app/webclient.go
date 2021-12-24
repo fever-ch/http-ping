@@ -108,14 +108,21 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	}
 
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		var ipaddr string
 
 		startDNSHook(ctx)
-		ipaddr, err := webClient.resolver.resolveConn(webClient.connTarget)
-		stopDNSHook(ctx)
 
-		if err != nil {
-			return nil, err
+		if webClient.config.ConnTarget == "" {
+			resolvedIpaddr, err := webClient.resolver.resolveConn(webClient.connTarget)
+
+			if err != nil {
+				return nil, err
+			}
+			ipaddr = resolvedIpaddr
+		} else {
+			ipaddr = webClient.config.ConnTarget
 		}
+		stopDNSHook(ctx)
 
 		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
 	}
