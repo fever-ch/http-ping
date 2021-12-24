@@ -57,5 +57,8 @@ func (t *timer) duration() time.Duration {
 }
 
 func (t *timer) measure() stats.Measure {
+	if t.startTime == defaultStartTime || t.stopTime == defaultStopTime {
+		return stats.MeasureNotInitialized
+	}
 	return stats.Measure(t.duration())
 }

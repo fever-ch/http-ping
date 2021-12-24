@@ -50,7 +50,10 @@ func HTTPPing(config *Config, stdout io.Writer) {
 	var latencies []stats.Measure
 	attempts, failures := 0, 0
 
-	measureSum := &HTTPMeasure{}
+	measureSum := &HTTPMeasure{
+		DNSDuration:  stats.MeasureNotValid,
+		TCPHandshake: stats.MeasureNotValid,
+		TLSDuration:  stats.MeasureNotValid}
 
 	var loop = true
 	for loop {
@@ -72,10 +75,11 @@ func HTTPPing(config *Config, stdout io.Writer) {
 						}
 
 						measureSum.Total += measure.Total
-						measureSum.ConnDuration += measure.ConnDuration
-						measureSum.DNSDuration += measure.DNSDuration.ValidOrZero()
-						measureSum.TCPHandshake += measure.TCPHandshake.ValidOrZero()
-						measureSum.TLSDuration += measure.TLSDuration.ValidOrZero()
+
+						measureSum.ConnDuration = measureSum.ConnDuration.SumIfValid(measure.ConnDuration)
+						measureSum.DNSDuration = measureSum.DNSDuration.SumIfValid(measure.DNSDuration)
+						measureSum.TCPHandshake = measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
+						measureSum.TLSDuration = measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
 						measureSum.ReqDuration += measure.ReqDuration
 						measureSum.Wait += measure.Wait
 						measureSum.RespDuration += measure.RespDuration
@@ -123,14 +127,14 @@ func HTTPPing(config *Config, stdout io.Writer) {
 		_, _ = fmt.Fprintf(stdout, "%s\n", stats.PingStatsFromLatencies(latencies).String())
 
 		if config.LogLevel == 2 {
-			measureSum.Total = stats.Measure(int64(measureSum.Total) / success)
-			measureSum.ConnDuration = stats.Measure(int64(measureSum.ConnDuration) / success)
-			measureSum.DNSDuration = stats.Measure(int64(measureSum.DNSDuration) / success)
-			measureSum.TCPHandshake = stats.Measure(int64(measureSum.TCPHandshake) / success)
-			measureSum.TLSDuration = stats.Measure(int64(measureSum.TLSDuration) / success)
-			measureSum.ReqDuration = stats.Measure(int64(measureSum.ReqDuration) / success)
-			measureSum.Wait = stats.Measure(int64(measureSum.Wait) / success)
-			measureSum.RespDuration = stats.Measure(int64(measureSum.RespDuration) / success)
+			measureSum.Total = measureSum.Total.Divide(success)
+			measureSum.ConnDuration = measureSum.ConnDuration.Divide(success)
+			measureSum.DNSDuration = measureSum.DNSDuration.Divide(success)
+			measureSum.TCPHandshake = measureSum.TCPHandshake.Divide(success)
+			measureSum.TLSDuration = measureSum.TLSDuration.Divide(success)
+			measureSum.ReqDuration = measureSum.ReqDuration.Divide(success)
+			measureSum.Wait = measureSum.Wait.Divide(success)
+			measureSum.RespDuration = measureSum.RespDuration.Divide(success)
 
 			measureSum.TLSEnabled = measureSum.TLSDuration > 0
 

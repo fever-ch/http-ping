@@ -25,9 +25,10 @@ import (
 const (
 	invalid = -int64(1)<<63 + 10
 
-	MeasureNotStarted     = Measure(invalid)
-	MeasureNotStopped     = Measure(invalid - 1)
-	MeasureNotInitialized = Measure(invalid - 2)
+	MeasureNotValid       = Measure(invalid)
+	MeasureNotStarted     = Measure(invalid - 1)
+	MeasureNotStopped     = Measure(invalid - 2)
+	MeasureNotInitialized = Measure(invalid - 3)
 )
 
 // Measure represent a time measurement which can be successful or not
@@ -38,13 +39,29 @@ func (m Measure) IsValid() bool {
 	return int64(m) > invalid
 }
 
-func (m Measure) ValidOrZero() Measure {
-	if m.IsValid() {
+// SumIfValid returns
+// - if both measures are valid: the sum of them
+// - if one of them is invalid, it returns this specific one
+// - otherwise it returns an invalid  measure
+func (m Measure) SumIfValid(o Measure) Measure {
+	if m.IsValid() && o.IsValid() {
+		return m + o
+	} else if m.IsValid() && !o.IsValid() {
 		return m
+	} else if !m.IsValid() && o.IsValid() {
+		return o
 	} else {
-		return Measure(0)
+		return MeasureNotValid
 	}
+}
 
+// Divide returns the result of the division of a measure with n
+// if the measure is invalid the returned value is invalid as well
+func (m Measure) Divide(n int64) Measure {
+	if !m.IsValid() {
+		return m
+	}
+	return Measure(int64(m) / n)
 }
 
 // IsSuccess returns true if the measurement is valid and positive.
