@@ -73,9 +73,9 @@ func HTTPPing(config *Config, stdout io.Writer) {
 
 						measureSum.Total += measure.Total
 						measureSum.ConnDuration += measure.ConnDuration
-						measureSum.DNSDuration += measure.DNSDuration
-						measureSum.TCPHandshake += measure.TCPHandshake
-						measureSum.TLSDuration += measure.TLSDuration
+						measureSum.DNSDuration += measure.DNSDuration.ValidOrZero()
+						measureSum.TCPHandshake += measure.TCPHandshake.ValidOrZero()
+						measureSum.TLSDuration += measure.TLSDuration.ValidOrZero()
 						measureSum.ReqDuration += measure.ReqDuration
 						measureSum.Wait += measure.Wait
 						measureSum.RespDuration += measure.RespDuration

@@ -38,6 +38,15 @@ func (m Measure) IsValid() bool {
 	return int64(m) > invalid
 }
 
+func (m Measure) ValidOrZero() Measure {
+	if m.IsValid() {
+		return m
+	} else {
+		return Measure(0)
+	}
+
+}
+
 // IsSuccess returns true if the measurement is valid and positive.
 func (m Measure) IsSuccess() bool {
 	return int64(m) >= 0
