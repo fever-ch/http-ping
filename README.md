@@ -18,6 +18,7 @@ This software is written in [Go](https://go.dev), and should then benefit from t
 
 This software has been reported to work well on:
 - *Linux:* amd64, 386, arm64, arm
+- *FreeBSD:* amd64, 386
 - *Windows:* amd64, 386, arm64
 - *MacOS:* amd64 (Intel Macs), arm64 (Apple Silicon)
 
@@ -80,33 +81,60 @@ HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping GET
 round-trip min/avg/max/stddev = 16.401/17.144/17.915/0.625 ms
 ```
 
-Measure the latency with Google Cloud Zurich with a single HTTP ping (`-c 1`), disabling socket reuse (`-K`), using a HEAD request (`-H`), and in verbose mode (`-v`):
+Measure the latency with Google Cloud Zurich region with ten HTTP pings (`-c 10`), disabling socket reuse (`-K`), using a HEAD request (`-H`), and in verbose mode (`-v`):
 ```
-> http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 1 -K -H -v
+> http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 10 -K -H -v
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping HEAD
 
-       0: 216.239.36.53:443, code=200, size=0 bytes, time=53.2 ms
+       0: 216.239.36.53:443, code=200, size=0 bytes, time=59.7 ms
           proto=HTTP/2.0, socket reused=false, compressed=true
-          network i/o: bytes read=4713, bytes written=671
+          network i/o: bytes read=4713, bytes written=669
           tls version=TLS-1.3
 
           latency contributions:
-            53.2 ms request and response
-                     ├─   34.8 ms connection setup
-                     │             ├─    1.6 ms DNS resolution
-                     │             ├─    9.5 ms TCP handshake
-                     │             └─   23.5 ms TLS handshake
-                     ├─    0.1 ms request sending
-                     ├─   17.9 ms wait
+            59.7 ms request and response
+                     ├─   39.1 ms connection setup
+                     │             ├─    3.9 ms DNS resolution
+                     │             ├─    9.0 ms TCP handshake
+                     │             └─   26.0 ms TLS handshake
+                     ├─    0.9 ms request sending
+                     ├─   17.3 ms wait
                      └─    0.2 ms response ingestion
 
+       ...
+
+       9: 216.239.36.53:443, code=200, size=0 bytes, time=53.5 ms
+          proto=HTTP/2.0, socket reused=false, compressed=true
+          network i/o: bytes read=4713, bytes written=669
+          tls version=TLS-1.3
+
+          latency contributions:
+            53.5 ms request and response
+                     ├─   35.2 ms connection setup
+                     │             ├─    3.4 ms DNS resolution
+                     │             ├─    8.7 ms TCP handshake
+                     │             └─   22.9 ms TLS handshake
+                     ├─    0.1 ms request sending
+                     ├─   18.0 ms wait
+                     └─    0.1 ms response ingestion
+                     
 --- https://europe-west6-5tkroniexa-oa.a.run.app/api/ping ping statistics ---
-1 requests sent, 1 answers received, 0.0% loss
-round-trip min/avg/max/stddev = 53.250/53.250/53.250/0.000 ms
+10 requests sent, 10 answers received, 0.0% loss
+round-trip min/avg/max/stddev = 52.900/56.048/59.653/2.089 ms
+
+average latency contributions:
+            56.0 ms request and response
+                     ├─   37.7 ms connection setup
+                     │             ├─    3.6 ms DNS resolution
+                     │             ├─    9.5 ms TCP handshake
+                     │             └─   24.5 ms TLS handshake
+                     ├─    0.1 ms request sending
+                     ├─   17.7 ms wait
+                     └─    0.2 ms response ingestion
 ```
 _note: the latency contribution tree only covers the main steps of the HTTP exchange, thus the sum doesn't fully match._
 
-## Install on Linux/FreeBSD/MacOS
+## Install on Linux
 
 The [releases](https://github.com/fever-ch/http-ping/releases) are providing packages for the following systems:
 - `deb`: Debian, Ubuntu, ...
@@ -118,7 +146,7 @@ The [releases](https://github.com/fever-ch/http-ping/releases) are providing pac
 A third party repository, [fever-ch/tap](https://www.github.com/fever-ch/homebrew-tap), provides up-to-date formula to deploy `http-ping` easily on platforms supported by [Homebrew](https://brew.sh).
 
 To install using Brew, run the following command:
-```shell
+```
 > brew install fever-ch/tap/http-ping
 ```
 
@@ -128,7 +156,7 @@ The [releases](https://github.com/fever-ch/http-ping/releases) are also containi
 
 
 ## Use with Docker
-```shell
+```
 > docker run --rm feverch/http-ping
 ```
 
@@ -137,7 +165,7 @@ Note: images are published as `feverch/http-ping` (Central Docker registry) or `
 
 ## Build your own binaries
 
-You can easily build `http-ping`, if `golang` is available on your system.
-```shell
+You can easily build `http-ping`, if `golang` is installed on your system.
+```
 > go install github.com/fever-ch/http-ping@latest
 ```
