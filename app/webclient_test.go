@@ -25,7 +25,7 @@ import (
 
 func TestWithEmbeddedWebServer(t *testing.T) {
 
-	ts := httptest.NewServer(
+	ts := httptest.NewTLSServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
 			case "/500":
@@ -39,17 +39,17 @@ func TestWithEmbeddedWebServer(t *testing.T) {
 
 	url := ts.URL
 
-	var webClient *WebClient
+	var webClient WebClient
 	var measure *HTTPMeasure
 
-	webClient, _ = NewWebClient(&Config{Target: fmt.Sprintf("%s/500", url)})
+	webClient, _ = NewWebClient(&Config{Target: fmt.Sprintf("%s/500", url), NoCheckCertificate: true}, &RuntimeConfig{})
 	measure = webClient.DoMeasure(false)
 
 	if !measure.IsFailure || measure.StatusCode != 500 {
 		t.Errorf("Request to server should have failed, 500")
 	}
 
-	webClient, _ = NewWebClient(&Config{Target: fmt.Sprintf("%s/200", url)})
+	webClient, _ = NewWebClient(&Config{Target: fmt.Sprintf("%s/200", url), NoCheckCertificate: true}, &RuntimeConfig{})
 	measure = webClient.DoMeasure(false)
 
 	if measure.IsFailure || measure.StatusCode != 200 {

@@ -22,6 +22,7 @@ import (
 	"github.com/fever-ch/http-ping/app"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"io"
 	"math"
 	"net"
 	"regexp"
@@ -31,11 +32,11 @@ import (
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	rootCmd := prepareRootCmd()
+	rootCmd := prepareRootCmd(app.HTTPPing)
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-func prepareRootCmd() *cobra.Command {
+func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) error) *cobra.Command {
 
 	var config = app.Config{}
 
@@ -161,9 +162,8 @@ func prepareRootCmd() *cobra.Command {
 
 				config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
 			}
-			app.HTTPPing(&config, cmd.OutOrStdout())
 
-			return nil
+			return appLogic(&config, cmd.OutOrStdout())
 		},
 	}
 

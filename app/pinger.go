@@ -51,29 +51,29 @@ type HTTPMeasure struct {
 	Headers      *http.Header
 }
 
-// Pinger is responsible for actually doing the HTTP pings
-type Pinger struct {
-	client           *WebClient
-	config           *Config
-	RedirectCallBack func(url string)
+type Pinger interface {
+	Ping() <-chan *HTTPMeasure
+
+	URL() string
 }
 
-// NewPinger builds a new Pinger
-func NewPinger(config *Config) (*Pinger, error) {
+// PingerImpl is responsible for actually doing the HTTP pings
+type PingerImpl struct {
+	client        WebClient
+	config        *Config
+	runtimeConfig *RuntimeConfig
+}
 
-	pinger := Pinger{}
+// NewPinger builds a new PingerImpl
+func NewPinger(config *Config, runtimeConfig *RuntimeConfig) (Pinger, error) {
+
+	pinger := PingerImpl{}
 
 	pinger.config = config
 
-	client, err := NewWebClient(config)
+	client, err := NewWebClient(config, runtimeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("%s (%s)", err, config.IPProtocol)
-	}
-
-	client.RedirectCallBack = func(url string) {
-		if pinger.RedirectCallBack != nil {
-			pinger.RedirectCallBack(url)
-		}
 	}
 
 	pinger.client = client
@@ -81,10 +81,15 @@ func NewPinger(config *Config) (*Pinger, error) {
 	return &pinger, nil
 }
 
+func (pinger *PingerImpl) URL() string {
+	return pinger.client.URL()
+}
+
 // Ping actually does the pinging specified in config
-func (pinger *Pinger) Ping() <-chan *HTTPMeasure {
+func (pinger *PingerImpl) Ping() <-chan *HTTPMeasure {
 	measures := make(chan *HTTPMeasure)
 	go func() {
+		defer close(measures)
 
 		if !pinger.config.DisableKeepAlive || pinger.config.FollowRedirects {
 			pinger.client.DoMeasure(pinger.config.FollowRedirects)
@@ -96,7 +101,6 @@ func (pinger *Pinger) Ping() <-chan *HTTPMeasure {
 			time.Sleep(pinger.config.Interval)
 		}
 
-		close(measures)
 	}()
 	return measures
 }

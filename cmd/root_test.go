@@ -18,31 +18,84 @@ package cmd
 
 import (
 	"bytes"
-	"github.com/spf13/cobra"
+	"github.com/fever-ch/http-ping/app"
+	"io"
 	"io/ioutil"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
-func TestCmd(t *testing.T) {
+func commandTest(t *testing.T, args []string) (*app.Config, []byte, error) {
+
 	ts := httptest.NewServer(nil)
 	defer ts.Close()
 
-	rootCmd := prepareRootCmd()
-	rootCmd.SetArgs([]string{"-c", "1", ts.URL})
+	var config *app.Config
+	rootCmd := prepareRootCmd(func(c *app.Config, stdout io.Writer) error {
+		config = c
+		return nil
+	})
+	println(rootCmd)
+	rootCmd.SetArgs(args)
 	b := bytes.NewBufferString("")
 
 	rootCmd.SetOut(b)
-
-	cobra.CheckErr(rootCmd.Execute())
-
-	out, err := ioutil.ReadAll(b)
+	//
+	err := rootCmd.Execute()
 	if err != nil {
-		t.Fatal(err)
+		return nil, nil, err
 	}
 
-	if !strings.Contains(string(out), "0.0% loss") {
-		t.Fatal("Expected no loss with a local server")
+	out, err := ioutil.ReadAll(b)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return config, out, nil
+}
+
+func TestCount(t *testing.T) {
+	config, _, err := commandTest(t, []string{"-c", "123", "www.google.com"})
+	if err != nil || config.Count != 123 {
+		t.Fatal("Count parameter not taken in account")
+	}
+}
+
+func TestEnforceIPv6(t *testing.T) {
+	config, _, err := commandTest(t, []string{"-6", "www.google.com"})
+	if err != nil && config.IPProtocol != "ip6" {
+		t.Fatal("IPv6 parameter not taken in account")
+	}
+
+}
+
+func TestEnforceIPv4AndIPv6(t *testing.T) {
+	_, _, err := commandTest(t, []string{"-4", "-6", "www.google.com"})
+	if err == nil {
+		t.Fatal("IPv6 parameter not taken in account")
+	}
+
+}
+
+func TestExcessOfArguments(t *testing.T) {
+	_, _, err := commandTest(t, []string{"www.google.com", "www.wikipedia.com"})
+	if err == nil {
+		t.Fatal("only one non-flag argument can we used")
+	}
+
+}
+
+func TestLackOfArguments(t *testing.T) {
+	_, _, err := commandTest(t, []string{})
+	if err == nil {
+		t.Fatal("only one non-flag argument can we used")
+	}
+}
+
+func TestCookie(t *testing.T) {
+	config, _, err := commandTest(t, []string{"--cookie", "animal=cat", "www.google.com"})
+	if err != nil || len(config.Cookies) != 1 || config.Cookies[0].Name != "animal" || config.Cookies[0].Value != "cat" {
+		t.Fatal("cookie flag not taken in account")
 	}
 }

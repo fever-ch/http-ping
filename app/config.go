@@ -64,3 +64,7 @@ type Config struct {
 	KeepCookies        bool
 	FollowRedirects    bool
 }
+
+type RuntimeConfig struct {
+	RedirectCallBack func(url string)
+}

@@ -26,26 +26,28 @@ import (
 )
 
 // HTTPPing actually does the pinging specified in config
-func HTTPPing(config *Config, stdout io.Writer) {
+func HTTPPing(config *Config, stdout io.Writer) error {
 
 	ic := make(chan os.Signal, 1)
 
 	signal.Notify(ic, os.Interrupt)
 
-	pinger, err := NewPinger(config)
+	runtimeConfig := &RuntimeConfig{
+		RedirectCallBack: func(url string) {
+			_, _ = fmt.Fprintf(stdout, "   ─→     Redirected to %s\n\n", url)
+		},
+	}
+
+	pinger, err := NewPinger(config, runtimeConfig)
 
 	if err != nil {
 		_, _ = fmt.Fprintf(stdout, "Error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
-	pinger.RedirectCallBack = func(url string) {
-		_, _ = fmt.Fprintf(stdout, "   ─→     Redirected to %s\n\n", url)
-	}
-	
 	ch := pinger.Ping()
 
-	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", pinger.client.url.String(), config.Method)
+	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", pinger.URL(), config.Method)
 
 	var latencies []stats.Measure
 	attempts, failures := 0, 0
@@ -113,7 +115,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 	if config.LogLevel != 2 {
 		_, _ = fmt.Fprintf(stdout, "\n")
 	}
-	fmt.Printf("--- %s ping statistics ---\n", pinger.client.url.String())
+	fmt.Printf("--- %s ping statistics ---\n", pinger.URL())
 	var lossRate = float64(0)
 	if attempts > 0 {
 		lossRate = float64(100*failures) / float64(attempts)
@@ -143,7 +145,7 @@ func HTTPPing(config *Config, stdout io.Writer) {
 			drawMeasure(measureSum, stdout)
 		}
 	}
-
+	return nil
 }
 
 func drawMeasure(measure *HTTPMeasure, stdout io.Writer) {

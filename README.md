@@ -27,7 +27,7 @@ This software has been reported to work well on:
 Simply type `http-ping -h` to get the list of available commands
 
 ```
-> http-ping -h
+$ http-ping -h
 An utility which evaluates the latency of HTTP/S requests
 
 Usage:
@@ -68,7 +68,7 @@ Flags:
 ```
 Measure the latency with the Google Cloud Zurich region with 4 HTTP pings (`-c 4`):
 ```
-> http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 4
+$ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 4
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping GET
 
        0: 216.239.36.53:443, code=200, size=13 bytes, time=17.9 ms
@@ -83,7 +83,7 @@ round-trip min/avg/max/stddev = 16.401/17.144/17.915/0.625 ms
 
 Measure the latency with Google Cloud Zurich region with ten HTTP pings (`-c 10`), disabling socket reuse (`-K`), using a HEAD request (`-H`), and in verbose mode (`-v`):
 ```
-> http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 10 -K -H -v
+$ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 10 -K -H -v
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping HEAD
 
        0: 216.239.36.53:443, code=200, size=0 bytes, time=59.7 ms
@@ -141,23 +141,24 @@ The [releases](https://github.com/fever-ch/http-ping/releases) are providing pac
 - `rpm`: RedHat, CentOS, SuSE, ...
 - `apk`: Alpine
 
+n.b.: _`http-ping` uses `ca-certificates` in order to authenticate the CA signature on the server certificates in communications over HTTPS._ 
+
 ## Install with Homebrew (Mac/Linux)
 
 A third party repository, [fever-ch/tap](https://www.github.com/fever-ch/homebrew-tap), provides up-to-date formula to deploy `http-ping` easily on platforms supported by [Homebrew](https://brew.sh).
 
 To install using Brew, run the following command:
 ```
-> brew install fever-ch/tap/http-ping
+$ brew install fever-ch/tap/http-ping
 ```
 
 ## Install on Linux/FreeBSD/MacOS/Windows
 
 The [releases](https://github.com/fever-ch/http-ping/releases) are also containing archive which contains the executable file, `tar.gz` files for Linux/FreeBSD/MacOS ans `zip` files for Windows.
 
-
 ## Use with Docker
 ```
-> docker run --rm feverch/http-ping
+$ docker run --rm feverch/http-ping
 ```
 
 Note: images are published as `feverch/http-ping` (Central Docker registry) or `ghcr.io/fever-ch/http-ping` (Github Container registry)
@@ -167,5 +168,5 @@ Note: images are published as `feverch/http-ping` (Central Docker registry) or `
 
 You can easily build `http-ping`, if `golang` is installed on your system.
 ```
-> go install github.com/fever-ch/http-ping@latest
+$ go install github.com/fever-ch/http-ping@latest
 ```

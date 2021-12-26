@@ -40,14 +40,20 @@ var portMap = map[string]string{
 	"https": "443",
 }
 
-// WebClient represents an HTTP/S client designed to do performance analysis
-type WebClient struct {
-	httpClient       *http.Client
-	connTarget       string
-	config           *Config
-	url              *url.URL
-	resolver         *resolver
-	RedirectCallBack func(url string)
+type WebClient interface {
+	DoMeasure(followRedirect bool) *HTTPMeasure
+
+	URL() string
+}
+
+// webClientImpl represents an HTTP/S client designed to do performance analysis
+type webClientImpl struct {
+	httpClient    *http.Client
+	connTarget    string
+	config        *Config
+	runtimeConfig *RuntimeConfig
+	url           *url.URL
+	resolver      *resolver
 
 	writes int64
 	reads  int64
@@ -58,7 +64,7 @@ func init() {
 	_, _ = x509.SystemCertPool()
 }
 
-func updateConnTarget(webClient *WebClient) {
+func updateConnTarget(webClient *webClientImpl) {
 	if webClient.config.ConnTarget == "" {
 		webClient.resolver = newResolver(webClient.config)
 
@@ -80,9 +86,9 @@ func updateConnTarget(webClient *WebClient) {
 	}
 }
 
-// NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
-func NewWebClient(config *Config) (*WebClient, error) {
-	webClient := WebClient{config: config}
+// NewWebClient builds a new instance of webClientImpl which will provides functions for Http-Ping
+func NewWebClient(config *Config, runtimeConfig *RuntimeConfig) (WebClient, error) {
+	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
 		return nil, err
@@ -95,20 +101,16 @@ func NewWebClient(config *Config) (*WebClient, error) {
 
 	startDNSHook := func(ctx context.Context) {
 		trace := httptrace.ContextClientTrace(ctx)
-		if trace == nil || trace.DNSStart == nil {
-			return
+		if trace != nil || trace.DNSStart != nil {
+			trace.DNSStart(httptrace.DNSStartInfo{})
 		}
-
-		trace.DNSStart(httptrace.DNSStartInfo{})
 	}
 
 	stopDNSHook := func(ctx context.Context) {
 		trace := httptrace.ContextClientTrace(ctx)
-		if trace == nil || trace.DNSDone == nil {
-			return
+		if trace != nil || trace.DNSDone != nil {
+			trace.DNSDone(httptrace.DNSDoneInfo{})
 		}
-
-		trace.DNSDone(httptrace.DNSDoneInfo{})
 	}
 
 	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -155,15 +157,19 @@ func NewWebClient(config *Config) (*WebClient, error) {
 	return &webClient, nil
 }
 
+func (webClient *webClientImpl) URL() string {
+	return webClient.url.String()
+}
+
 // DoMeasure evaluates the latency to a specific HTTP/S server
-func (webClient *WebClient) DoMeasure(followRedirect bool) *HTTPMeasure {
+func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	webClient.httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if followRedirect {
 			webClient.config.Target = req.URL.String()
 			webClient.url = req.URL
-			if webClient.RedirectCallBack != nil {
-				webClient.RedirectCallBack(req.URL.String())
+			if webClient.runtimeConfig.RedirectCallBack != nil {
+				webClient.runtimeConfig.RedirectCallBack(req.URL.String())
 			}
 			updateConnTarget(webClient)
 			return nil
