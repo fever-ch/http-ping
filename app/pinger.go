@@ -66,15 +66,14 @@ func NewPinger(config *Config) (*Pinger, error) {
 	pinger.config = config
 
 	client, err := NewWebClient(config)
+	if err != nil {
+		return nil, fmt.Errorf("%s (%s)", err, config.IPProtocol)
+	}
 
 	client.RedirectCallBack = func(url string) {
 		if pinger.RedirectCallBack != nil {
 			pinger.RedirectCallBack(url)
 		}
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("%s (%s)", err, config.IPProtocol)
 	}
 
 	pinger.client = client
