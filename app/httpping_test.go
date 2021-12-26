@@ -23,5 +23,5 @@ import (
 
 func TestHTTPPing(t *testing.T) {
 	b := bytes.NewBufferString("")
-	_ = HTTPPing(&Config{}, b)
+	_ = DoHTTPPing(&Config{}, b)
 }

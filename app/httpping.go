@@ -25,12 +25,25 @@ import (
 	"time"
 )
 
-// HTTPPing actually does the pinging specified in config
-func HTTPPing(config *Config, stdout io.Writer) error {
+type HTTPPing interface {
+	Run() error
+}
 
-	ic := make(chan os.Signal, 1)
+type HTTPPingImpl struct {
+	config *Config
+	stdout io.Writer
+	pinger Pinger
+}
 
-	signal.Notify(ic, os.Interrupt)
+func DoHTTPPing(config *Config, stdout io.Writer) error {
+	instance, err := NewHTTPPing(config, stdout)
+	if err != nil {
+		return err
+	}
+	return instance.Run()
+}
+
+func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 
 	runtimeConfig := &RuntimeConfig{
 		RedirectCallBack: func(url string) {
@@ -41,13 +54,29 @@ func HTTPPing(config *Config, stdout io.Writer) error {
 	pinger, err := NewPinger(config, runtimeConfig)
 
 	if err != nil {
-		_, _ = fmt.Fprintf(stdout, "Error: %s\n", err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 
-	ch := pinger.Ping()
+	return &HTTPPingImpl{
+		config: config,
+		stdout: stdout,
+		pinger: pinger,
+	}, nil
+}
 
-	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", pinger.URL(), config.Method)
+// HTTPPing actually does the pinging specified in config
+func (httpPingImpl *HTTPPingImpl) Run() error {
+
+	config := httpPingImpl.config
+	stdout := httpPingImpl.stdout
+
+	ic := make(chan os.Signal, 1)
+
+	signal.Notify(ic, os.Interrupt)
+
+	ch := httpPingImpl.pinger.Ping()
+
+	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", httpPingImpl.pinger.URL(), config.Method)
 
 	var latencies []stats.Measure
 	attempts, failures := 0, 0
@@ -115,7 +144,7 @@ func HTTPPing(config *Config, stdout io.Writer) error {
 	if config.LogLevel != 2 {
 		_, _ = fmt.Fprintf(stdout, "\n")
 	}
-	fmt.Printf("--- %s ping statistics ---\n", pinger.URL())
+	fmt.Printf("--- %s ping statistics ---\n", httpPingImpl.pinger.URL())
 	var lossRate = float64(0)
 	if attempts > 0 {
 		lossRate = float64(100*failures) / float64(attempts)
