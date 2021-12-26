@@ -32,11 +32,11 @@ import (
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	rootCmd := prepareRootCmd(app.DoHTTPPing)
+	rootCmd := prepareRootCmd(app.NewHTTPPing)
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) error) *cobra.Command {
+func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTTPPing, error)) *cobra.Command {
 
 	var config = app.Config{}
 
@@ -163,7 +163,11 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) error) *
 				config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
 			}
 
-			return appLogic(&config, cmd.OutOrStdout())
+			instance, err := appLogic(&config, cmd.OutOrStdout())
+			if err != nil {
+				return err
+			}
+			return instance.Run()
 		},
 	}
 

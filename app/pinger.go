@@ -51,23 +51,22 @@ type HTTPMeasure struct {
 	Headers      *http.Header
 }
 
+// Pinger does the calls to the actual HTTP/S component
 type Pinger interface {
 	Ping() <-chan *HTTPMeasure
 
 	URL() string
 }
 
-// PingerImpl is responsible for actually doing the HTTP pings
-type PingerImpl struct {
-	client        WebClient
-	config        *Config
-	runtimeConfig *RuntimeConfig
+type pingerImpl struct {
+	client WebClient
+	config *Config
 }
 
-// NewPinger builds a new PingerImpl
+// NewPinger builds a new pingerImpl
 func NewPinger(config *Config, runtimeConfig *RuntimeConfig) (Pinger, error) {
 
-	pinger := PingerImpl{}
+	pinger := pingerImpl{}
 
 	pinger.config = config
 
@@ -81,12 +80,12 @@ func NewPinger(config *Config, runtimeConfig *RuntimeConfig) (Pinger, error) {
 	return &pinger, nil
 }
 
-func (pinger *PingerImpl) URL() string {
+func (pinger *pingerImpl) URL() string {
 	return pinger.client.URL()
 }
 
 // Ping actually does the pinging specified in config
-func (pinger *PingerImpl) Ping() <-chan *HTTPMeasure {
+func (pinger *pingerImpl) Ping() <-chan *HTTPMeasure {
 	measures := make(chan *HTTPMeasure)
 	go func() {
 		defer close(measures)

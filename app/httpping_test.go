@@ -18,10 +18,53 @@ package app
 
 import (
 	"bytes"
+	"io/ioutil"
+	"strings"
 	"testing"
 )
 
+type PingerMock struct{}
+
 func TestHTTPPing(t *testing.T) {
 	b := bytes.NewBufferString("")
-	_ = DoHTTPPing(&Config{}, b)
+	instance, _ := NewHTTPPing(&Config{Count: 10}, b)
+	instance.(*httpPingImpl).pinger = &PingerMock{}
+	_ = instance.Run()
+
+	out, _ := ioutil.ReadAll(b)
+
+	if !strings.Contains(string(out), "10 requests sent, 10 answers received, 0.0% loss") {
+		t.Fatal("Result didn't match expectations")
+	}
+}
+
+func TestHTTPPingVerbose(t *testing.T) {
+	b := bytes.NewBufferString("")
+	instance, _ := NewHTTPPing(&Config{Count: 10, LogLevel: 2}, b)
+	instance.(*httpPingImpl).pinger = &PingerMock{}
+	_ = instance.Run()
+
+	out, _ := ioutil.ReadAll(b)
+
+	if !strings.Contains(string(out), "10 requests sent, 10 answers received, 0.0% loss") ||
+		!strings.Contains(string(out), "├─") {
+		t.Fatal("Result didn't match expectations")
+	}
+}
+
+func (pingerMock *PingerMock) URL() string {
+	return "https://www.google.com"
+}
+
+func (pingerMock *PingerMock) Ping() <-chan *HTTPMeasure {
+	measures := make(chan *HTTPMeasure)
+
+	go func() {
+		defer close(measures)
+		for i := 0; i < 10; i++ {
+			measures <- &HTTPMeasure{}
+		}
+	}()
+
+	return measures
 }

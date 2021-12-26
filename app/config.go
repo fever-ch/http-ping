@@ -34,7 +34,7 @@ type Header pair
 // Parameter is a data structure which represents a request parameter (Name and Value)
 type Parameter pair
 
-// Config defines the multiple parameters which can be sent to HTTPPing
+// Config defines the multiple parameters which can be passed to NewHTTPPing
 type Config struct {
 	IPProtocol         string
 	Interval           time.Duration
@@ -65,6 +65,7 @@ type Config struct {
 	FollowRedirects    bool
 }
 
+// RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClient
 type RuntimeConfig struct {
 	RedirectCallBack func(url string)
 }

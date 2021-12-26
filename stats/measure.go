@@ -26,9 +26,7 @@ const (
 	invalid = -int64(1)<<63 + 10
 
 	MeasureNotValid       = Measure(invalid)
-	MeasureNotStarted     = Measure(invalid - 1)
-	MeasureNotStopped     = Measure(invalid - 2)
-	MeasureNotInitialized = Measure(invalid - 3)
+	MeasureNotInitialized = Measure(invalid - 1)
 )
 
 // Measure represent a time measurement which can be successful or not

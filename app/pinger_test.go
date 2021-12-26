@@ -20,11 +20,27 @@ import (
 	"testing"
 )
 
+type webClientMock struct{}
+
 func TestPinger(t *testing.T) {
-	pinger, _ := NewPinger(&Config{}, &RuntimeConfig{})
+	wanted := 123
+	pinger, _ := NewPinger(&Config{Count: int64(wanted)}, &RuntimeConfig{})
+	pinger.(*pingerImpl).client = &webClientMock{}
+	ch := pinger.Ping()
 
-	pinger.Ping()
+	count := 0
+	for range ch {
+		count++
+	}
+	if count != 123 {
+		t.Fatalf("%d != %d, number of measures didn't match", count, wanted)
+	}
+}
 
-	println(pinger)
+func (webClientMock *webClientMock) DoMeasure(_ bool) *HTTPMeasure {
+	return &HTTPMeasure{}
+}
 
+func (webClientMock *webClientMock) URL() string {
+	return "https://www.google.com"
 }

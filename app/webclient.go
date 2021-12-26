@@ -40,13 +40,13 @@ var portMap = map[string]string{
 	"https": "443",
 }
 
+// WebClient represents an HTTP/S client designed to do performance analysis
 type WebClient interface {
 	DoMeasure(followRedirect bool) *HTTPMeasure
 
 	URL() string
 }
 
-// webClientImpl represents an HTTP/S client designed to do performance analysis
 type webClientImpl struct {
 	httpClient    *http.Client
 	connTarget    string

@@ -25,17 +25,29 @@ import (
 	"testing"
 )
 
-func commandTest(t *testing.T, args []string) (*app.Config, []byte, error) {
+type httpPingMockBuilder struct {
+	config *app.Config
+}
+
+type httpPingMock struct{}
+
+func (httpPingMock *httpPingMock) Run() error {
+	return nil
+}
+
+func (httpPingMockBuilder *httpPingMockBuilder) newHTTPPingMock(config *app.Config, _ io.Writer) (app.HTTPPing, error) {
+	httpPingMockBuilder.config = config
+	return &httpPingMock{}, nil
+}
+
+func commandTest(_ *testing.T, args []string) (*app.Config, []byte, error) {
 
 	ts := httptest.NewServer(nil)
 	defer ts.Close()
 
-	var config *app.Config
-	rootCmd := prepareRootCmd(func(c *app.Config, stdout io.Writer) error {
-		config = c
-		return nil
-	})
-	println(rootCmd)
+	builder := httpPingMockBuilder{}
+	rootCmd := prepareRootCmd(builder.newHTTPPingMock)
+
 	rootCmd.SetArgs(args)
 	b := bytes.NewBufferString("")
 
@@ -52,7 +64,7 @@ func commandTest(t *testing.T, args []string) (*app.Config, []byte, error) {
 		return nil, nil, err
 	}
 
-	return config, out, nil
+	return builder.config, out, nil
 }
 
 func TestCount(t *testing.T) {

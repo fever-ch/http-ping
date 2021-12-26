@@ -25,24 +25,18 @@ import (
 	"time"
 )
 
+// HTTPPing is the main class of this app, now it contains mostly UI logic
 type HTTPPing interface {
 	Run() error
 }
 
-type HTTPPingImpl struct {
+type httpPingImpl struct {
 	config *Config
 	stdout io.Writer
 	pinger Pinger
 }
 
-func DoHTTPPing(config *Config, stdout io.Writer) error {
-	instance, err := NewHTTPPing(config, stdout)
-	if err != nil {
-		return err
-	}
-	return instance.Run()
-}
-
+// NewHTTPPing builds a new instance of HTTPPing or error if something goes wrong
 func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 
 	runtimeConfig := &RuntimeConfig{
@@ -57,15 +51,15 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 		return nil, err
 	}
 
-	return &HTTPPingImpl{
+	return &httpPingImpl{
 		config: config,
 		stdout: stdout,
 		pinger: pinger,
 	}, nil
 }
 
-// HTTPPing actually does the pinging specified in config
-func (httpPingImpl *HTTPPingImpl) Run() error {
+// Run does start of the application logic, returns an error if something goes wrong, nil otherwise
+func (httpPingImpl *httpPingImpl) Run() error {
 
 	config := httpPingImpl.config
 	stdout := httpPingImpl.stdout
@@ -144,7 +138,7 @@ func (httpPingImpl *HTTPPingImpl) Run() error {
 	if config.LogLevel != 2 {
 		_, _ = fmt.Fprintf(stdout, "\n")
 	}
-	fmt.Printf("--- %s ping statistics ---\n", httpPingImpl.pinger.URL())
+	_, _ = fmt.Fprintf(stdout, "--- %s ping statistics ---\n", httpPingImpl.pinger.URL())
 	var lossRate = float64(0)
 	if attempts > 0 {
 		lossRate = float64(100*failures) / float64(attempts)
