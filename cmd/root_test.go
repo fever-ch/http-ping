@@ -21,7 +21,6 @@ import (
 	"github.com/fever-ch/http-ping/app"
 	"io"
 	"io/ioutil"
-	"net/http/httptest"
 	"testing"
 )
 
@@ -41,9 +40,6 @@ func (httpPingMockBuilder *httpPingMockBuilder) newHTTPPingMock(config *app.Conf
 }
 
 func commandTest(_ *testing.T, args []string) (*app.Config, []byte, error) {
-
-	ts := httptest.NewServer(nil)
-	defer ts.Close()
 
 	builder := httpPingMockBuilder{}
 	rootCmd := prepareRootCmd(builder.newHTTPPingMock)
