@@ -34,15 +34,15 @@ func HTTPPing(config *Config, stdout io.Writer) {
 
 	pinger, err := NewPinger(config)
 
-	pinger.RedirectCallBack = func(url string) {
-		_, _ = fmt.Fprintf(stdout, "   ─→     Redirected to %s\n\n", url)
-	}
-
 	if err != nil {
 		_, _ = fmt.Fprintf(stdout, "Error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
+	pinger.RedirectCallBack = func(url string) {
+		_, _ = fmt.Fprintf(stdout, "   ─→     Redirected to %s\n\n", url)
+	}
+	
 	ch := pinger.Ping()
 
 	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", pinger.client.url.String(), config.Method)

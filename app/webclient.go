@@ -83,7 +83,11 @@ func updateConnTarget(webClient *WebClient) {
 // NewWebClient builds a new instance of WebClient which will provides functions for Http-Ping
 func NewWebClient(config *Config) (*WebClient, error) {
 	webClient := WebClient{config: config}
-	webClient.url, _ = url.Parse(config.Target)
+	parsedURL, err := url.Parse(config.Target)
+	if err != nil {
+		return nil, err
+	}
+	webClient.url = parsedURL
 
 	updateConnTarget(&webClient)
 

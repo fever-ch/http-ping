@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/fever-ch/http-ping/app"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"math"
 	"net"
 	"regexp"
@@ -74,6 +75,22 @@ func prepareRootCmd() *cobra.Command {
 
 			config.Target = args[0]
 
+			usedFlags := make(map[string]struct{})
+
+			cmd.Flags().Visit(func(f *pflag.Flag) {
+				usedFlags[f.Name] = struct{}{}
+			})
+
+			isFlagUsed := func(name string) bool {
+				_, used := usedFlags[name]
+				return used
+			}
+			isFlagUsed("header")
+
+			if isFlagUsed("head") && isFlagUsed("method") {
+				return errors.New("head and method cannot be enforced simultaneously")
+			}
+
 			if ipv4 && ipv6 {
 				return errors.New("IPv4 and IPv6 cannot be enforced simultaneously")
 			} else if !ipv4 && !ipv6 {
@@ -107,8 +124,6 @@ func prepareRootCmd() *cobra.Command {
 
 			if head {
 				config.Method = "HEAD"
-			} else {
-				config.Method = "GET"
 			}
 
 			if a, e := regexp.MatchString("^https?://", config.Target); e == nil && !a {
@@ -120,24 +135,31 @@ func prepareRootCmd() *cobra.Command {
 			}
 
 			for _, cookie := range cookies {
-				n, v := splitPair(cookie)
-				if n != "" {
-					config.Cookies = append(config.Cookies, app.Cookie{Name: n, Value: v})
+				n, v, e := splitPair(cookie)
+				if e != nil {
+					return fmt.Errorf("cookie: %s", e)
 				}
+
+				config.Cookies = append(config.Cookies, app.Cookie{Name: n, Value: v})
+
 			}
 
 			for _, header := range headers {
-				n, v := splitPair(header)
-				if n != "" {
-					config.Headers = append(config.Headers, app.Header{Name: n, Value: v})
+				n, v, e := splitPair(header)
+				if e != nil {
+					return fmt.Errorf("header: %s", e)
 				}
+
+				config.Headers = append(config.Headers, app.Header{Name: n, Value: v})
 			}
 
 			for _, parameter := range parameters {
-				n, v := splitPair(parameter)
-				if n != "" {
-					config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
+				n, v, e := splitPair(parameter)
+				if e != nil {
+					return fmt.Errorf("parameter: %s", e)
 				}
+
+				config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
 			}
 			app.HTTPPing(&config, cmd.OutOrStdout())
 
@@ -148,6 +170,8 @@ func prepareRootCmd() *cobra.Command {
 	rootCmd.Flags().StringVar(&config.UserAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectURL), "define a custom user-agent")
 
 	rootCmd.Flags().StringVarP(&config.ConnTarget, "conn-target", "", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
+
+	rootCmd.Flags().StringVarP(&config.Method, "method", "", "GET", "select a which HTTP method to be used")
 
 	rootCmd.Flags().BoolVarP(&head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
 
@@ -206,11 +230,11 @@ func prepareRootCmd() *cobra.Command {
 	return rootCmd
 }
 
-func splitPair(str string) (string, string) {
-	r := regexp.MustCompile("^([^:]*)=(.*)$")
+func splitPair(str string) (string, string, error) {
+	r := regexp.MustCompile("^([[:alnum:]]+)=(.*)$")
 	e := r.FindStringSubmatch(str)
 	if len(e) == 3 {
-		return e[1], e[2]
+		return e[1], e[2], nil
 	}
-	return "", ""
+	return "", "", fmt.Errorf("format should be \"key=value\", where key is a non-empty string of alphanumberic characters and value any string, illegal format: \"%s\"", str)
 }
