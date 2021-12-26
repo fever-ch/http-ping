@@ -61,8 +61,10 @@ nfpms:
     description: Http-Ping is similar to the usual ping networking utility but instead of working on top of ICMP, it works on top of HTTP/S.
     maintainer: Raphaël P. Barazzutti
     license: Apache 2.0
-    vendor: Fever-Ch
+    vendor: fever.ch
     bindir: /usr/bin
+    suggests:
+      - ca-certificates
     formats:
       - apk
       - deb
