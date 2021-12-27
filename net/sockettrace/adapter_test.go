@@ -81,9 +81,9 @@ func TestInterceptionOfHTTPRequest(t *testing.T) {
 
 	req = req.WithContext(traceCtx)
 
-	_, _ = httpClient.Do(req)
+	_, err := httpClient.Do(req)
 
-	if !tcpStartedA || !tcpEstablishedA || !tcpStartedB || !tcpEstablishedB {
+	if err != nil || !tcpStartedA || !tcpEstablishedA || !tcpStartedB || !tcpEstablishedB {
 		t.Fatal("interception of TCP connection failed")
 	}
 
