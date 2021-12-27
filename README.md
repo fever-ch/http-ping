@@ -1,4 +1,4 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/fever-ch/http-ping)](https://goreportcard.com/report/github.com/fever-ch/http-ping)
+[![Go Report Card](https://goreportcard.com/badge/fever.ch/http-ping)](https://goreportcard.com/report/fever.ch/http-ping)
 [![pr/push checks](https://github.com/fever-ch/http-ping/actions/workflows/continuous-integration.yml/badge.svg)](https://github.com/fever-ch/http-ping/actions/workflows/continuous-integration.yml)
 [![MIT license](https://img.shields.io/badge/license-Apache-brightgreen.svg)](https://opensource.org/licenses/Apache-2.0)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/fever-ch/http-ping)
