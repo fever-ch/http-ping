@@ -168,5 +168,5 @@ Note: images are published as `feverch/http-ping` (Central Docker registry) or `
 
 You can easily build `http-ping`, if `golang` is installed on your system.
 ```
-$ go install github.com/fever-ch/http-ping@latest
+$ go install fever.ch/http-ping@latest
 ```

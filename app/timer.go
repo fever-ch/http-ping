@@ -17,7 +17,7 @@
 package app
 
 import (
-	"github.com/fever-ch/http-ping/stats"
+	"fever.ch/http-ping/stats"
 	"math"
 	"time"
 )

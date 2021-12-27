@@ -18,7 +18,7 @@ package cmd
 
 import (
 	"bytes"
-	"github.com/fever-ch/http-ping/app"
+	"fever.ch/http-ping/app"
 	"io"
 	"io/ioutil"
 	"testing"

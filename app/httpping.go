@@ -17,8 +17,8 @@
 package app
 
 import (
+	"fever.ch/http-ping/stats"
 	"fmt"
-	"github.com/fever-ch/http-ping/stats"
 	"io"
 	"os"
 	"os/signal"

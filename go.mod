@@ -1,4 +1,4 @@
-module github.com/fever-ch/http-ping
+module fever.ch/http-ping
 
 go 1.17
 

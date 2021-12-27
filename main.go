@@ -17,7 +17,7 @@
 package main
 
 import (
-	"github.com/fever-ch/http-ping/cmd"
+	"fever.ch/http-ping/cmd"
 	"os"
 )
 
