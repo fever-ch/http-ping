@@ -21,7 +21,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fever.ch/http-ping/net/sockettrace"
-	"fever.ch/http-ping/stats"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -161,106 +160,17 @@ func (webClient *webClientImpl) URL() string {
 	return webClient.url.String()
 }
 
-// DoMeasure evaluates the latency to a specific HTTP/S server
-func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
-
-	webClient.httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if followRedirect {
-			webClient.config.Target = req.URL.String()
-			webClient.url = req.URL
-			if webClient.runtimeConfig.RedirectCallBack != nil {
-				webClient.runtimeConfig.RedirectCallBack(req.URL.String())
-			}
-			updateConnTarget(webClient)
-			return nil
-		}
-		return http.ErrUseLastResponse
+func (webClient *webClientImpl) checkRedirectFollow(req *http.Request, _ []*http.Request) error {
+	webClient.config.Target = req.URL.String()
+	webClient.url = req.URL
+	if webClient.runtimeConfig.RedirectCallBack != nil {
+		webClient.runtimeConfig.RedirectCallBack(req.URL.String())
 	}
+	updateConnTarget(webClient)
+	return nil
+}
 
-	req, _ := http.NewRequest(webClient.config.Method, webClient.config.Target, nil)
-
-	if webClient.httpClient.Jar == nil || !webClient.config.KeepCookies {
-		jar, _ := cookiejar.New(nil)
-		var cookies []*http.Cookie
-		for _, c := range webClient.config.Cookies {
-			cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})
-		}
-
-		jar.SetCookies(webClient.url, cookies)
-		webClient.httpClient.Jar = jar
-	}
-
-	var reused bool
-	var remoteAddr string
-
-	connTimer := newTimer()
-	dnsTimer := newTimer()
-	tlsTimer := newTimer()
-	tcpTimer := newTimer()
-	reqTimer := newTimer()
-	waitTimer := newTimer()
-	responseTimer := newTimer()
-
-	clientTrace := &httptrace.ClientTrace{
-
-		TLSHandshakeStart: func() {
-			tlsTimer.start()
-		},
-
-		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			tlsTimer.stop()
-		},
-		DNSStart: func(info httptrace.DNSStartInfo) {
-			dnsTimer.start()
-		},
-
-		DNSDone: func(info httptrace.DNSDoneInfo) {
-			dnsTimer.stop()
-		},
-
-		GetConn: func(hostPort string) {
-			connTimer.start()
-		},
-
-		GotConn: func(info httptrace.GotConnInfo) {
-			remoteAddr = info.Conn.RemoteAddr().String()
-			connTimer.stop()
-			reqTimer.start()
-			reused = info.Reused
-		},
-
-		WroteRequest: func(info httptrace.WroteRequestInfo) {
-			reqTimer.stop()
-			waitTimer.start()
-
-		},
-
-		GotFirstResponseByte: func() {
-			waitTimer.stop()
-			responseTimer.start()
-		},
-	}
-
-	ctx := sockettrace.WithTrace(context.Background(),
-		&sockettrace.ConnTrace{
-			Read: func(i int) {
-				atomic.AddInt64(&webClient.reads, int64(i))
-			},
-			Write: func(i int) {
-				atomic.AddInt64(&webClient.writes, int64(i))
-			},
-			TCPStart: func() {
-				tcpTimer.start()
-			},
-			TCPEstablished: func() {
-				tcpTimer.stop()
-			},
-		})
-
-	traceCtx := httptrace.WithClientTrace(ctx, clientTrace)
-
-	req = req.WithContext(traceCtx)
-
+func (webClient *webClientImpl) prepareReq(req *http.Request) {
 	if len(webClient.config.Parameters) > 0 || webClient.config.ExtraParam {
 		q := req.URL.Query()
 
@@ -292,9 +202,105 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		}
 	}
 
-	start := time.Now()
-	//reqTimer.start()
+}
 
+// DoMeasure evaluates the latency to a specific HTTP/S server
+func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
+
+	if followRedirect {
+		webClient.httpClient.CheckRedirect = webClient.checkRedirectFollow
+	} else {
+		webClient.httpClient.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+
+	req, _ := http.NewRequest(webClient.config.Method, webClient.config.Target, nil)
+
+	if webClient.httpClient.Jar == nil || !webClient.config.KeepCookies {
+		jar, _ := cookiejar.New(nil)
+		var cookies []*http.Cookie
+		for _, c := range webClient.config.Cookies {
+			cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})
+		}
+
+		jar.SetCookies(webClient.url, cookies)
+		webClient.httpClient.Jar = jar
+	}
+
+	var reused bool
+	var remoteAddr string
+
+	totalTimer := newTimer()
+	connTimer := newTimer()
+	dnsTimer := newTimer()
+	tlsTimer := newTimer()
+	tcpTimer := newTimer()
+	reqTimer := newTimer()
+	waitTimer := newTimer()
+	responseTimer := newTimer()
+
+	clientTrace := &httptrace.ClientTrace{
+		TLSHandshakeStart: func() {
+			tlsTimer.start()
+		},
+
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			tlsTimer.stop()
+		},
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			dnsTimer.start()
+		},
+
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			dnsTimer.stop()
+		},
+
+		GetConn: func(hostPort string) {
+			connTimer.start()
+		},
+
+		GotConn: func(info httptrace.GotConnInfo) {
+			remoteAddr = info.Conn.RemoteAddr().String()
+			connTimer.stop()
+			reqTimer.start()
+			reused = info.Reused
+		},
+
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			reqTimer.stop()
+			waitTimer.start()
+		},
+
+		GotFirstResponseByte: func() {
+			waitTimer.stop()
+			responseTimer.start()
+		},
+	}
+
+	ctx := sockettrace.WithTrace(context.Background(),
+		&sockettrace.ConnTrace{
+			Read: func(i int) {
+				atomic.AddInt64(&webClient.reads, int64(i))
+			},
+			Write: func(i int) {
+				atomic.AddInt64(&webClient.writes, int64(i))
+			},
+			TCPStart: func() {
+				tcpTimer.start()
+			},
+			TCPEstablished: func() {
+				tcpTimer.stop()
+			},
+		})
+
+	traceCtx := httptrace.WithClientTrace(ctx, clientTrace)
+
+	req = req.WithContext(traceCtx)
+
+	webClient.prepareReq(req)
+
+	totalTimer.start()
 	res, err := webClient.httpClient.Do(req)
 
 	if err != nil {
@@ -314,7 +320,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	_ = res.Body.Close()
 	responseTimer.stop()
-	var d = time.Since(start)
+	totalTimer.stop()
 
 	failed := false
 	failureCause := ""
@@ -339,7 +345,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	return &HTTPMeasure{
 		Proto:        res.Proto,
-		TotalTime:    stats.Measure(d),
+		TotalTime:    totalTimer.measure(),
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
 		InBytes:      i,
