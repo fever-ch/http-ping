@@ -133,8 +133,6 @@ func newQuietLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
 	return &quietLogger{config: config, stdout: stdout, pinger: pinger}
 }
 
-func (quietLogger *quietLogger) onStart() {}
-
 func (quietLogger *quietLogger) onMeasure(_ *HTTPMeasure, _ int) {
 }
 

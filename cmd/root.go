@@ -36,21 +36,188 @@ func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
+// extraConfig are config items that are triggered by cobra, but which are not part of the config of HTTPPing, these
+// items need to be copied/adapted to HTTPPing (the runner is doing that)
+type extraConfig struct {
+	ipv4, ipv6 bool
+
+	head bool
+
+	quiet, verbose bool
+
+	cookies []string
+
+	headers []string
+
+	parameters []string
+}
+
+type runner struct {
+	config   *app.Config
+	xp       *extraConfig
+	appLogic func(config *app.Config, stdout io.Writer) (app.HTTPPing, error)
+	cmd      *cobra.Command
+	args     []string
+}
+
+func (runner *runner) run() error {
+	loaders := []func() error{
+		runner.loadTarget,
+		runner.loadTarget,
+		runner.loadRest,
+		runner.loadLog,
+		runner.loadNetwork,
+		runner.loadDNS,
+	}
+
+	for _, loader := range loaders {
+		if err := loader(); err != nil {
+			return err
+		}
+	}
+
+	instance, err := runner.appLogic(runner.config, runner.cmd.OutOrStdout())
+	if err != nil {
+		return err
+	}
+	return instance.Run()
+}
+
+func (runner *runner) isFlagUsed(name string) bool {
+	used := false
+	runner.cmd.Flags().Visit(func(f *pflag.Flag) {
+		if name == f.Name {
+			used = true
+		}
+	})
+	return used
+}
+
+func (runner *runner) loadTarget() error {
+	if len(runner.args) == 0 {
+		_ = runner.cmd.Usage()
+		runner.cmd.Println()
+		return errors.New("target-URL required")
+	} else if len(runner.args) > 1 {
+		_ = runner.cmd.Usage()
+		runner.cmd.Println()
+		return errors.New("too many arguments")
+	}
+
+	runner.config.Target = runner.args[0]
+
+	if a, e := regexp.MatchString("^https?://", runner.config.Target); e == nil && !a {
+		runner.config.Target = "https://" + runner.config.Target
+	}
+	return nil
+}
+
+func (runner *runner) loadNetwork() error {
+	if runner.xp.ipv4 {
+		if runner.xp.ipv6 {
+			return errors.New("IPv4 and IPv6 cannot be enforced simultaneously")
+		}
+		runner.config.IPProtocol = "ip4"
+	} else if runner.xp.ipv6 {
+		runner.config.IPProtocol = "ip6"
+	} else {
+		runner.config.IPProtocol = "ip"
+	}
+
+	return nil
+}
+
+func (runner *runner) loadLog() error {
+	if runner.xp.verbose {
+		if runner.xp.quiet {
+			return errors.New("quiet and verbose cannot be enforced simultaneously")
+		}
+		runner.config.LogLevel = 2
+	} else if runner.xp.quiet {
+		runner.config.LogLevel = 0
+	} else {
+		runner.config.LogLevel = 1
+	}
+	return nil
+}
+
+func (runner *runner) loadDNS() error {
+
+	if runner.config.FullDNS && runner.config.DNSServer != "" {
+		return errors.New("DNS server cannot specified when full DNS resolutions is enabled")
+	}
+
+	if runner.config.DNSServer != "" && net.ParseIP(runner.config.DNSServer) == nil {
+		return errors.New("DNS server should be an IPv4 or IPv6 address")
+	}
+	return nil
+}
+
+func (runner *runner) loadRest() error {
+
+	if runner.xp.head {
+		if runner.isFlagUsed("method") {
+			return errors.New("head and method cannot be enforced simultaneously")
+		}
+
+		runner.config.Method = "HEAD"
+	}
+
+	if runner.config.Count <= 0 {
+		return fmt.Errorf("invalid count of requests to be sent `%d'", runner.config.Count)
+	}
+
+	for _, cookie := range runner.xp.cookies {
+		n, v, e := splitPair(cookie)
+		if e != nil {
+			return fmt.Errorf("cookie: %s", e)
+		}
+
+		runner.config.Cookies = append(runner.config.Cookies, app.Cookie{Name: n, Value: v})
+	}
+
+	for _, header := range runner.xp.headers {
+		n, v, e := splitPair(header)
+		if e != nil {
+			return fmt.Errorf("header: %s", e)
+		}
+
+		runner.config.Headers = append(runner.config.Headers, app.Header{Name: n, Value: v})
+	}
+
+	for _, parameter := range runner.xp.parameters {
+		n, v, e := splitPair(parameter)
+		if e != nil {
+			return fmt.Errorf("parameter: %s", e)
+		}
+
+		runner.config.Parameters = append(runner.config.Parameters, app.Parameter{Name: n, Value: v})
+	}
+	return nil
+}
+
+func splitPair(str string) (string, string, error) {
+	r := regexp.MustCompile("^([[:alnum:]]+)=(.*)$")
+	e := r.FindStringSubmatch(str)
+	if len(e) == 3 {
+		return e[1], e[2], nil
+	}
+	return "", "", fmt.Errorf("format should be \"key=value\", where key is a non-empty string of alphanumberic characters and value any string, illegal format: \"%s\"", str)
+}
+
+func runAndError(config *app.Config, xp *extraConfig, appLogic func(config *app.Config, stdout io.Writer) (app.HTTPPing, error)) func(cmd *cobra.Command, args []string) error {
+
+	return func(cmd *cobra.Command, args []string) error {
+		r := runner{appLogic: appLogic, config: config, xp: xp, cmd: cmd, args: args}
+		return r.run()
+	}
+}
+
 func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTTPPing, error)) *cobra.Command {
 
-	var config = app.Config{}
+	var config = &app.Config{}
 
-	var ipv4, ipv6 bool
-
-	var head bool
-
-	var quiet, verbose bool
-
-	var cookies []string
-
-	var headers []string
-
-	var parameters []string
+	xp := &extraConfig{}
 
 	var rootCmd = &cobra.Command{
 		SilenceUsage:  true,
@@ -62,113 +229,7 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 		Long:  `An utility which evaluates the latency of HTTP/S requests`,
 
 		Version: app.Version,
-
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				_ = cmd.Usage()
-				cmd.Println()
-				return errors.New("target-URL required")
-			} else if len(args) > 1 {
-				_ = cmd.Usage()
-				cmd.Println()
-				return errors.New("too many arguments")
-			}
-
-			config.Target = args[0]
-
-			usedFlags := make(map[string]struct{})
-
-			cmd.Flags().Visit(func(f *pflag.Flag) {
-				usedFlags[f.Name] = struct{}{}
-			})
-
-			isFlagUsed := func(name string) bool {
-				_, used := usedFlags[name]
-				return used
-			}
-			isFlagUsed("header")
-
-			if isFlagUsed("head") && isFlagUsed("method") {
-				return errors.New("head and method cannot be enforced simultaneously")
-			}
-
-			if ipv4 && ipv6 {
-				return errors.New("IPv4 and IPv6 cannot be enforced simultaneously")
-			} else if !ipv4 && !ipv6 {
-				config.IPProtocol = "ip"
-			} else if ipv4 {
-				config.IPProtocol = "ip4"
-			} else {
-				config.IPProtocol = "ip6"
-			}
-
-			if verbose && quiet {
-				return errors.New("quiet and verbose cannot be enforced simultaneously")
-			} else if verbose {
-				config.LogLevel = 2
-			} else if quiet {
-				config.LogLevel = 0
-			} else {
-				config.LogLevel = 1
-			}
-
-			if config.FullDNS && config.DNSServer != "" {
-				return errors.New("DNS server cannot specified when full DNS resolutions is enabled")
-			}
-
-			if config.DNSServer != "" {
-				ip := net.ParseIP(config.DNSServer)
-				if ip == nil {
-					return errors.New("DNS server should be an IPv4 or IPv6 address")
-				}
-			}
-
-			if head {
-				config.Method = "HEAD"
-			}
-
-			if a, e := regexp.MatchString("^https?://", config.Target); e == nil && !a {
-				config.Target = "https://" + config.Target
-			}
-
-			if config.Count <= 0 {
-				return fmt.Errorf("invalid count of requests to be sent `%d'", config.Count)
-			}
-
-			for _, cookie := range cookies {
-				n, v, e := splitPair(cookie)
-				if e != nil {
-					return fmt.Errorf("cookie: %s", e)
-				}
-
-				config.Cookies = append(config.Cookies, app.Cookie{Name: n, Value: v})
-
-			}
-
-			for _, header := range headers {
-				n, v, e := splitPair(header)
-				if e != nil {
-					return fmt.Errorf("header: %s", e)
-				}
-
-				config.Headers = append(config.Headers, app.Header{Name: n, Value: v})
-			}
-
-			for _, parameter := range parameters {
-				n, v, e := splitPair(parameter)
-				if e != nil {
-					return fmt.Errorf("parameter: %s", e)
-				}
-
-				config.Parameters = append(config.Parameters, app.Parameter{Name: n, Value: v})
-			}
-
-			instance, err := appLogic(&config, cmd.OutOrStdout())
-			if err != nil {
-				return err
-			}
-			return instance.Run()
-		},
+		RunE:    runAndError(config, xp, appLogic),
 	}
 
 	rootCmd.Flags().StringVar(&config.UserAgent, "user-agent", fmt.Sprintf("Http-Ping/%s (%s)", app.Version, app.ProjectURL), "define a custom user-agent")
@@ -177,11 +238,11 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().StringVarP(&config.Method, "method", "", "GET", "select a which HTTP method to be used")
 
-	rootCmd.Flags().BoolVarP(&head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
+	rootCmd.Flags().BoolVarP(&xp.head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
 
-	rootCmd.Flags().BoolVarP(&ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")
+	rootCmd.Flags().BoolVarP(&xp.ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")
 
-	rootCmd.Flags().BoolVarP(&ipv6, "ipv6", "6", false, "force IPv6 resolution for dual-stacked sites")
+	rootCmd.Flags().BoolVarP(&xp.ipv6, "ipv6", "6", false, "force IPv6 resolution for dual-stacked sites")
 
 	rootCmd.Flags().BoolVarP(&config.DisableKeepAlive, "disable-keepalive", "K", false, "disable keep-alive feature")
 
@@ -193,17 +254,17 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flag("count").DefValue = "unlimited"
 
-	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "print more details")
+	rootCmd.Flags().BoolVarP(&xp.verbose, "verbose", "v", false, "print more details")
 
-	rootCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "print less details")
+	rootCmd.Flags().BoolVarP(&xp.quiet, "quiet", "q", false, "print less details")
 
 	rootCmd.Flags().BoolVarP(&config.NoCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
 
-	rootCmd.Flags().StringArrayVarP(&cookies, "cookie", "", []string{}, "add one or more cookies, in the form name=value")
+	rootCmd.Flags().StringArrayVarP(&xp.cookies, "cookie", "", []string{}, "add one or more cookies, in the form name=value")
 
-	rootCmd.Flags().StringArrayVarP(&headers, "header", "", []string{}, "add one or more header, in the form name=value")
+	rootCmd.Flags().StringArrayVarP(&xp.headers, "header", "", []string{}, "add one or more header, in the form name=value")
 
-	rootCmd.Flags().StringArrayVarP(&parameters, "parameter", "", []string{}, "add one or more parameters to the query, in the form name:value")
+	rootCmd.Flags().StringArrayVarP(&xp.parameters, "parameter", "", []string{}, "add one or more parameters to the query, in the form name:value")
 
 	rootCmd.Flags().BoolVarP(&config.IgnoreServerErrors, "no-server-error", "", false, "ignore server errors (5xx), do not handle them as \"lost pings\"")
 
@@ -232,13 +293,4 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 	rootCmd.Flags().BoolVarP(&config.FollowRedirects, "follow-redirects", "F", false, "follow HTTP redirects (codes 3xx)")
 
 	return rootCmd
-}
-
-func splitPair(str string) (string, string, error) {
-	r := regexp.MustCompile("^([[:alnum:]]+)=(.*)$")
-	e := r.FindStringSubmatch(str)
-	if len(e) == 3 {
-		return e[1], e[2], nil
-	}
-	return "", "", fmt.Errorf("format should be \"key=value\", where key is a non-empty string of alphanumberic characters and value any string, illegal format: \"%s\"", str)
 }
