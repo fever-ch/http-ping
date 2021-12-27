@@ -34,6 +34,7 @@ type httpPingImpl struct {
 	config *Config
 	stdout io.Writer
 	pinger Pinger
+	logger logger
 }
 
 // NewHTTPPing builds a new instance of HTTPPing or error if something goes wrong
@@ -51,10 +52,21 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 		return nil, err
 	}
 
+	var logger logger
+
+	if config.LogLevel == 0 {
+		logger = newQuietLogger(config, stdout, pinger)
+	} else if config.LogLevel == 2 {
+		logger = newVerboseLogger(config, stdout, pinger)
+	} else {
+		logger = newStandardLogger(config, stdout, pinger)
+	}
+
 	return &httpPingImpl{
 		config: config,
 		stdout: stdout,
 		pinger: pinger,
+		logger: logger,
 	}, nil
 }
 
@@ -72,13 +84,9 @@ func (httpPingImpl *httpPingImpl) Run() error {
 
 	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", httpPingImpl.pinger.URL(), config.Method)
 
+	successes := 0
+	attempts := 0
 	var latencies []stats.Measure
-	attempts, failures := 0, 0
-
-	measureSum := &HTTPMeasure{
-		DNSResolution: stats.MeasureNotValid,
-		TCPHandshake:  stats.MeasureNotValid,
-		TLSDuration:   stats.MeasureNotValid}
 
 	var loop = true
 	for loop {
@@ -87,91 +95,169 @@ func (httpPingImpl *httpPingImpl) Run() error {
 			if measure == nil {
 				loop = false
 			} else {
+				httpPingImpl.logger.onMeasure(measure, attempts)
+				attempts++
 				if !measure.IsFailure {
-					if config.LogLevel >= 1 {
-						_, _ = fmt.Fprintf(stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.TotalTime.ToFloat(time.Millisecond))
-					}
-					if config.LogLevel == 2 {
-						_, _ = fmt.Fprintf(stdout, "          proto=%s, socket reused=%t, compressed=%t\n", measure.Proto, measure.SocketReused, measure.Compressed)
-						_, _ = fmt.Fprintf(stdout, "          network i/o: bytes read=%d, bytes written=%d\n", measure.InBytes, measure.OutBytes)
-
-						if measure.TLSEnabled {
-							_, _ = fmt.Fprintf(stdout, "          tls version=%s\n", measure.TLSVersion)
-						}
-
-						measureSum.TotalTime += measure.TotalTime
-
-						measureSum.ConnEstablishment = measureSum.ConnEstablishment.SumIfValid(measure.ConnEstablishment)
-						measureSum.DNSResolution = measureSum.DNSResolution.SumIfValid(measure.DNSResolution)
-						measureSum.TCPHandshake = measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
-						measureSum.TLSDuration = measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
-						measureSum.RequestSending += measure.RequestSending
-						measureSum.Wait += measure.Wait
-						measureSum.ResponseIngesting += measure.ResponseIngesting
-
-						_, _ = fmt.Fprintf(stdout, "\n")
-
-						_, _ = fmt.Fprintf(stdout, "          latency contributions:\n")
-
-						drawMeasure(measure, stdout)
-
-						_, _ = fmt.Fprintf(stdout, "\n")
-					}
+					successes++
 					latencies = append(latencies, measure.TotalTime)
-
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")
 					}
-				} else {
-					if config.LogLevel >= 1 {
-						_, _ = fmt.Fprintf(stdout, "%4d: Error: %s\n", attempts, measure.FailureCause)
-					}
-					failures++
 				}
-				attempts++
 			}
 		case <-ic:
 			loop = false
 		}
 	}
-
-	if config.LogLevel != 2 {
-		_, _ = fmt.Fprintf(stdout, "\n")
-	}
-	_, _ = fmt.Fprintf(stdout, "--- %s ping statistics ---\n", httpPingImpl.pinger.URL())
 	var lossRate = float64(0)
 	if attempts > 0 {
-		lossRate = float64(100*failures) / float64(attempts)
+		lossRate = float64(100*(attempts-successes)) / float64(attempts)
 	}
 
-	success := int64(attempts - failures)
-
-	_, _ = fmt.Fprintf(stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, attempts-failures, lossRate)
-
-	if len(latencies) > 0 {
-		_, _ = fmt.Fprintf(stdout, "%s\n", stats.PingStatsFromLatencies(latencies).String())
-
-		if config.LogLevel == 2 {
-			measureSum.TotalTime = measureSum.TotalTime.Divide(success)
-			measureSum.ConnEstablishment = measureSum.ConnEstablishment.Divide(success)
-			measureSum.DNSResolution = measureSum.DNSResolution.Divide(success)
-			measureSum.TCPHandshake = measureSum.TCPHandshake.Divide(success)
-			measureSum.TLSDuration = measureSum.TLSDuration.Divide(success)
-			measureSum.RequestSending = measureSum.RequestSending.Divide(success)
-			measureSum.Wait = measureSum.Wait.Divide(success)
-			measureSum.ResponseIngesting = measureSum.ResponseIngesting.Divide(success)
-
-			measureSum.TLSEnabled = measureSum.TLSDuration > 0
-
-			_, _ = fmt.Fprintf(stdout, "\naverage latency contributions:\n")
-
-			drawMeasure(measureSum, stdout)
-		}
-	}
+	httpPingImpl.logger.onClose(int64(attempts), int64(successes), lossRate, stats.PingStatsFromLatencies(latencies))
 	return nil
 }
 
-func drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
+type logger interface {
+	onMeasure(httpMeasure *HTTPMeasure, id int)
+	onClose(attempts int64, success int64, lossRate float64, pingStats *stats.PingStats)
+}
+
+type quietLogger struct {
+	config *Config
+	stdout io.Writer
+	pinger Pinger
+}
+
+func newQuietLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
+	return &quietLogger{config: config, stdout: stdout, pinger: pinger}
+}
+
+func (quietLogger *quietLogger) onStart() {}
+
+func (quietLogger *quietLogger) onMeasure(_ *HTTPMeasure, _ int) {
+}
+
+func (quietLogger *quietLogger) onClose(attempts int64, successes int64, lossRate float64, pingStats *stats.PingStats) {
+
+	_, _ = fmt.Fprintf(quietLogger.stdout, "--- %s ping statistics ---\n", quietLogger.pinger.URL())
+
+	_, _ = fmt.Fprintf(quietLogger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, successes, lossRate)
+
+	if successes > 0 {
+		_, _ = fmt.Fprintf(quietLogger.stdout, "%s\n", pingStats.String())
+	}
+}
+
+type standardLogger struct {
+	config *Config
+	stdout io.Writer
+	pinger Pinger
+}
+
+func newStandardLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
+	return &standardLogger{config: config, stdout: stdout, pinger: pinger}
+}
+
+func (standardLogger *standardLogger) onMeasure(measure *HTTPMeasure, id int) {
+
+	if measure.IsFailure {
+		_, _ = fmt.Fprintf(standardLogger.stdout, "%4d: Error: %s\n", id, measure.FailureCause)
+		return
+	}
+	_, _ = fmt.Fprintf(standardLogger.stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", id, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.TotalTime.ToFloat(time.Millisecond))
+
+}
+
+func (standardLogger *standardLogger) onClose(attempts int64, successes int64, lossRate float64, pingStats *stats.PingStats) {
+	_, _ = fmt.Fprintf(standardLogger.stdout, "\n")
+	_, _ = fmt.Fprintf(standardLogger.stdout, "--- %s ping statistics ---\n", standardLogger.pinger.URL())
+
+	_, _ = fmt.Fprintf(standardLogger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, successes, lossRate)
+
+	if successes > 0 {
+		_, _ = fmt.Fprintf(standardLogger.stdout, "%s\n", pingStats.String())
+	}
+}
+
+type verboseLogger struct {
+	config     *Config
+	stdout     io.Writer
+	measureSum *HTTPMeasure
+	pinger     Pinger
+}
+
+func newVerboseLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
+	return &verboseLogger{config: config, stdout: stdout, pinger: pinger,
+		measureSum: &HTTPMeasure{
+			DNSResolution: stats.MeasureNotValid,
+			TCPHandshake:  stats.MeasureNotValid,
+			TLSDuration:   stats.MeasureNotValid,
+		},
+	}
+}
+
+func (verboseLogger *verboseLogger) onMeasure(measure *HTTPMeasure, id int) {
+
+	if measure.IsFailure {
+		_, _ = fmt.Fprintf(verboseLogger.stdout, "%4d: Error: %s\n", id, measure.FailureCause)
+		return
+	}
+
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", id, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.TotalTime.ToFloat(time.Millisecond))
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "          proto=%s, socket reused=%t, compressed=%t\n", measure.Proto, measure.SocketReused, measure.Compressed)
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "          network i/o: bytes read=%d, bytes written=%d\n", measure.InBytes, measure.OutBytes)
+
+	if measure.TLSEnabled {
+		_, _ = fmt.Fprintf(verboseLogger.stdout, "          tls version=%s\n", measure.TLSVersion)
+	}
+
+	verboseLogger.measureSum.TotalTime += measure.TotalTime
+
+	verboseLogger.measureSum.ConnEstablishment = verboseLogger.measureSum.ConnEstablishment.SumIfValid(measure.ConnEstablishment)
+	verboseLogger.measureSum.DNSResolution = verboseLogger.measureSum.DNSResolution.SumIfValid(measure.DNSResolution)
+	verboseLogger.measureSum.TCPHandshake = verboseLogger.measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
+	verboseLogger.measureSum.TLSDuration = verboseLogger.measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
+	verboseLogger.measureSum.RequestSending += measure.RequestSending
+	verboseLogger.measureSum.Wait += measure.Wait
+	verboseLogger.measureSum.ResponseIngesting += measure.ResponseIngesting
+
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "\n")
+
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "          latency contributions:\n")
+
+	verboseLogger.drawMeasure(measure, verboseLogger.stdout)
+
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "\n")
+}
+
+func (verboseLogger *verboseLogger) onClose(attempts int64, successes int64, lossRate float64, pingStats *stats.PingStats) {
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "\n")
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "--- %s ping statistics ---\n", verboseLogger.pinger.URL())
+
+	_, _ = fmt.Fprintf(verboseLogger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, successes, lossRate)
+
+	if successes > 0 {
+		_, _ = fmt.Fprintf(verboseLogger.stdout, "%s\n", pingStats.String())
+
+		verboseLogger.measureSum.TotalTime = verboseLogger.measureSum.TotalTime.Divide(successes)
+		verboseLogger.measureSum.ConnEstablishment = verboseLogger.measureSum.ConnEstablishment.Divide(successes)
+		verboseLogger.measureSum.DNSResolution = verboseLogger.measureSum.DNSResolution.Divide(successes)
+		verboseLogger.measureSum.TCPHandshake = verboseLogger.measureSum.TCPHandshake.Divide(successes)
+		verboseLogger.measureSum.TLSDuration = verboseLogger.measureSum.TLSDuration.Divide(successes)
+		verboseLogger.measureSum.RequestSending = verboseLogger.measureSum.RequestSending.Divide(successes)
+		verboseLogger.measureSum.Wait = verboseLogger.measureSum.Wait.Divide(successes)
+		verboseLogger.measureSum.ResponseIngesting = verboseLogger.measureSum.ResponseIngesting.Divide(successes)
+
+		verboseLogger.measureSum.TLSEnabled = verboseLogger.measureSum.TLSDuration > 0
+
+		_, _ = fmt.Fprintf(verboseLogger.stdout, "\naverage latency contributions:\n")
+
+		verboseLogger.drawMeasure(verboseLogger.measureSum, verboseLogger.stdout)
+	}
+}
+
+func (verboseLogger *verboseLogger) drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
 	entries := measureEntry{
 		label:    "request and response",
 		duration: measure.TotalTime,
@@ -191,7 +277,7 @@ func drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
 		entries.children[0].children = entries.children[0].children[0:2]
 	}
 
-	l := makeTreeList(&entries)
+	l := verboseLogger.makeTreeList(&entries)
 
 	for i, e := range l {
 		pipes := make([]string, e.depth)
@@ -225,7 +311,7 @@ type measureEntryVisit struct {
 	depth        int
 }
 
-func makeTreeList(root *measureEntry) []measureEntryVisit {
+func (verboseLogger *verboseLogger) makeTreeList(root *measureEntry) []measureEntryVisit {
 	var list []measureEntryVisit
 
 	var visit func(entry *measureEntry, depth int)
