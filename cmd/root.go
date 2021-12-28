@@ -64,10 +64,10 @@ func (runner *runner) run() error {
 	loaders := []func() error{
 		runner.loadTarget,
 		runner.loadTarget,
-		runner.loadRest,
 		runner.loadLog,
 		runner.loadNetwork,
 		runner.loadDNS,
+		runner.loadRest,
 	}
 
 	for _, loader := range loaders {
@@ -165,6 +165,10 @@ func (runner *runner) loadRest() error {
 
 	if runner.config.Count <= 0 {
 		return fmt.Errorf("invalid count of requests to be sent `%d'", runner.config.Count)
+	}
+
+	if runner.config.Workers <= 0 {
+		return fmt.Errorf("invalid number of workers `%d'", runner.config.Workers)
 	}
 
 	for _, cookie := range runner.xp.cookies {
@@ -291,6 +295,8 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 	rootCmd.Flags().BoolVarP(&config.KeepCookies, "keep-cookies", "", false, "keep received cookies between requests")
 
 	rootCmd.Flags().BoolVarP(&config.FollowRedirects, "follow-redirects", "F", false, "follow HTTP redirects (codes 3xx)")
+
+	rootCmd.Flags().IntVarP(&config.Workers, "workers", "", 1, "define the number of workers to be used")
 
 	return rootCmd
 }

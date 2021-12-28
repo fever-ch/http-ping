@@ -20,6 +20,7 @@ import (
 	"fever.ch/http-ping/stats"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -87,19 +88,30 @@ func (pinger *pingerImpl) URL() string {
 // Ping actually does the pinging specified in config
 func (pinger *pingerImpl) Ping() <-chan *HTTPMeasure {
 	measures := make(chan *HTTPMeasure)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < pinger.config.Workers; i++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			if !pinger.config.DisableKeepAlive || pinger.config.FollowRedirects {
+				pinger.client.DoMeasure(pinger.config.FollowRedirects)
+				time.Sleep(pinger.config.Interval)
+			}
+
+			for a := int64(0); a < pinger.config.Count; a++ {
+				measures <- pinger.client.DoMeasure(false)
+				time.Sleep(pinger.config.Interval)
+			}
+		}()
+	}
+
 	go func() {
-		defer close(measures)
-
-		if !pinger.config.DisableKeepAlive || pinger.config.FollowRedirects {
-			pinger.client.DoMeasure(pinger.config.FollowRedirects)
-			time.Sleep(pinger.config.Interval)
-		}
-
-		for a := int64(0); a < pinger.config.Count; a++ {
-			measures <- pinger.client.DoMeasure(false)
-			time.Sleep(pinger.config.Interval)
-		}
-
+		wg.Wait()
+		close(measures)
 	}()
 	return measures
 }

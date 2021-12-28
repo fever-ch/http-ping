@@ -65,6 +65,7 @@ Flags:
   -v, --verbose                 print more details
       --version                 version for http-ping
   -w, --wait duration           define the time for a response before timing out (default 10s)
+      --workers int             define the number of workers to be used (default 1)
 ```
 Measure the latency with the Google Cloud Zurich region with 4 HTTP pings (`-c 4`):
 ```

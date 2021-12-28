@@ -63,6 +63,7 @@ type Config struct {
 	CacheDNSRequests   bool
 	KeepCookies        bool
 	FollowRedirects    bool
+	Workers            int
 }
 
 // RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClient

@@ -24,7 +24,7 @@ type webClientMock struct{}
 
 func TestPinger(t *testing.T) {
 	wanted := 123
-	pinger, _ := NewPinger(&Config{Count: int64(wanted)}, &RuntimeConfig{})
+	pinger, _ := NewPinger(&Config{Workers: 1, Count: int64(wanted)}, &RuntimeConfig{})
 	pinger.(*pingerImpl).client = &webClientMock{}
 	ch := pinger.Ping()
 
