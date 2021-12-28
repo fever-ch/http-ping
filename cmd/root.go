@@ -250,7 +250,7 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().DurationVarP(&config.Interval, "interval", "i", 1*time.Second, "define the wait time between each request")
 
-	rootCmd.Flags().Int64VarP(&config.Count, "count", "c", math.MaxInt, "define the number of request to be sent")
+	rootCmd.Flags().Int64VarP(&config.Count, "count", "c", math.MaxInt64, "define the number of request to be sent")
 
 	rootCmd.Flag("count").DefValue = "unlimited"
 
