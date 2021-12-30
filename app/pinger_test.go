@@ -44,3 +44,7 @@ func (webClientMock *webClientMock) DoMeasure(_ bool) *HTTPMeasure {
 func (webClientMock *webClientMock) URL() string {
 	return "https://www.google.com"
 }
+
+func (webClientMock *webClientMock) Clone() WebClient {
+	return webClientMock
+}

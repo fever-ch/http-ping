@@ -91,19 +91,32 @@ func (pinger *pingerImpl) Ping() <-chan *HTTPMeasure {
 
 	var wg sync.WaitGroup
 
+	if pinger.config.FollowRedirects {
+		pinger.client.DoMeasure(true)
+	}
+
 	for i := 0; i < pinger.config.Workers; i++ {
 		wg.Add(1)
 
 		go func() {
+
+			var client WebClient
+
+			if pinger.config.Workers == 1 {
+				client = pinger.client
+			} else {
+				client = pinger.client.Clone()
+			}
+
 			defer wg.Done()
 
-			if !pinger.config.DisableKeepAlive || pinger.config.FollowRedirects {
-				pinger.client.DoMeasure(pinger.config.FollowRedirects)
-				time.Sleep(pinger.config.Interval)
+			if !pinger.config.DisableKeepAlive {
+				client.DoMeasure(pinger.config.FollowRedirects)
+				time.Sleep(time.Second)
 			}
 
 			for a := int64(0); a < pinger.config.Count; a++ {
-				measures <- pinger.client.DoMeasure(false)
+				measures <- client.DoMeasure(false)
 				time.Sleep(pinger.config.Interval)
 			}
 		}()

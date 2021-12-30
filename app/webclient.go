@@ -44,6 +44,8 @@ type WebClient interface {
 	DoMeasure(followRedirect bool) *HTTPMeasure
 
 	URL() string
+
+	Clone() WebClient
 }
 
 type webClientImpl struct {
@@ -58,12 +60,21 @@ type webClientImpl struct {
 	reads  int64
 }
 
+func (webClient *webClientImpl) Clone() WebClient {
+	w, _ := NewWebClient(webClient.config, webClient.runtimeConfig)
+	if wc, ok := w.(*webClientImpl); ok {
+		wc.url = webClient.url
+		wc.updateConnTarget()
+	}
+	return w
+}
+
 func init() {
 	// load system cert pool once at the beginning to not impact further measures
 	_, _ = x509.SystemCertPool()
 }
 
-func updateConnTarget(webClient *webClientImpl) {
+func (webClient *webClientImpl) updateConnTarget() {
 	if webClient.config.ConnTarget == "" {
 		webClient.resolver = newResolver(webClient.config)
 
@@ -94,7 +105,7 @@ func NewWebClient(config *Config, runtimeConfig *RuntimeConfig) (WebClient, erro
 	}
 	webClient.url = parsedURL
 
-	updateConnTarget(&webClient)
+	webClient.updateConnTarget()
 
 	dialer := &net.Dialer{}
 
@@ -166,7 +177,7 @@ func (webClient *webClientImpl) checkRedirectFollow(req *http.Request, _ []*http
 	if webClient.runtimeConfig.RedirectCallBack != nil {
 		webClient.runtimeConfig.RedirectCallBack(req.URL.String())
 	}
-	updateConnTarget(webClient)
+	webClient.updateConnTarget()
 	return nil
 }
 

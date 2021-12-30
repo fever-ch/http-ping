@@ -80,9 +80,9 @@ func (httpPingImpl *httpPingImpl) Run() error {
 
 	signal.Notify(ic, os.Interrupt)
 
-	ch := httpPingImpl.pinger.Ping()
-
 	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", httpPingImpl.pinger.URL(), config.Method)
+
+	ch := httpPingImpl.pinger.Ping()
 
 	successes := 0
 	attempts := 0
