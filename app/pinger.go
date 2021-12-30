@@ -117,7 +117,10 @@ func (pinger *pingerImpl) Ping() <-chan *HTTPMeasure {
 
 			for a := int64(0); a < pinger.config.Count; a++ {
 				measures <- client.DoMeasure(false)
-				time.Sleep(pinger.config.Interval)
+
+				if a < pinger.config.Count-1 {
+					time.Sleep(pinger.config.Interval)
+				}
 			}
 		}()
 	}
