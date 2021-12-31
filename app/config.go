@@ -64,6 +64,7 @@ type Config struct {
 	KeepCookies        bool
 	FollowRedirects    bool
 	Workers            int
+	Tput               bool
 }
 
 // RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClient

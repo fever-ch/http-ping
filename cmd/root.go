@@ -298,5 +298,7 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().IntVarP(&config.Workers, "workers", "", 1, "define the number of workers to be used")
 
+	rootCmd.Flags().BoolVarP(&config.Tput, "throughput", "t", false, "log the number of requests done per second")
+
 	return rootCmd
 }
