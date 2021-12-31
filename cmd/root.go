@@ -300,5 +300,7 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().BoolVarP(&config.Tput, "throughput", "t", false, "log the number of requests done per second")
 
+	rootCmd.Flags().DurationVarP(&config.TputRefresh, "throughput-refresh", "T", 5*time.Second, "sampling time for measuring throughput")
+
 	return rootCmd
 }

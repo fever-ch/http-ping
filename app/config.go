@@ -65,6 +65,7 @@ type Config struct {
 	FollowRedirects    bool
 	Workers            int
 	Tput               bool
+	TputRefresh        time.Duration
 }
 
 // RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClient

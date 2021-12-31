@@ -90,7 +90,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 	ticker := time.NewTicker(5 * time.Second)
 	tickerChan := make(<-chan time.Time)
 	ticker.Stop()
-	started := false
+	tpuStarted := false
 	tputMeasurer := newTputMeasurer()
 
 	loop := true
@@ -109,12 +109,10 @@ func (httpPingImpl *httpPingImpl) Run() error {
 				httpPingImpl.logger.onMeasure(measure, attempts)
 				attempts++
 				if !measure.IsFailure {
-					if !started {
-						if config.Tput {
-							tputMeasurer.Measure()
-							tickerChan = (time.NewTicker(5 * time.Second)).C
-						}
-						started = true
+					if config.Tput && !tpuStarted {
+						tputMeasurer.Measure()
+						tickerChan = (time.NewTicker(config.TputRefresh)).C
+						tpuStarted = true
 					}
 					tputMeasurer.Count(measure.TotalTime)
 
