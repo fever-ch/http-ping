@@ -31,7 +31,7 @@ type PingStats struct {
 
 // PingStatsFromLatencies computes PingStats from a serie of ping measurements.
 func PingStatsFromLatencies(measures []Measure) *PingStats {
-	
+
 	stats := ComputeStats(measuresIterable(measures))
 
 	return &PingStats{
@@ -65,8 +65,8 @@ func (m *measuresIterator) HasNext() bool {
 	return m.nextPos < len(m.measures)
 }
 
-func (m *measuresIterator) Next() Sample {
-	val := Sample{Value: m.measures[m.nextPos].ToFloat(time.Nanosecond), Weight: 1.0}
+func (m *measuresIterator) Next() Observation {
+	val := Observation{Value: m.measures[m.nextPos].ToFloat(time.Nanosecond), Weight: 1.0}
 	m.nextPos++
 	return val
 }

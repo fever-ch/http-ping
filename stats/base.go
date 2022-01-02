@@ -18,20 +18,24 @@ package stats
 
 import "math"
 
-type Sample struct {
-	Weight float64
+// Observation represents an item in the population we would extract statistics
+type Observation struct {
 	Value  float64
+	Weight float64
 }
 
+// Iterator is used to iterate over Observation
 type Iterator interface {
 	HasNext() bool
-	Next() Sample
+	Next() Observation
 }
 
+// Iterable is used to define a collection providing an Iterator
 type Iterable interface {
 	Iterator() Iterator
 }
 
+// Stats is the type returned by ComputeStats
 type Stats struct {
 	Average float64
 	Min     float64
@@ -39,14 +43,15 @@ type Stats struct {
 	StdDev  float64
 }
 
-func ComputeStats(iterable Iterable) *Stats {
+// ComputeStats return statistical information about collection as Stats instance
+func ComputeStats(collection Iterable) *Stats {
 	min := math.MaxFloat64
 	max := -math.MaxFloat64
 
 	totalWeight := 0.0
 	total := 0.0
 
-	it := iterable.Iterator()
+	it := collection.Iterator()
 	for it.HasNext() {
 		cur := it.Next()
 
@@ -63,7 +68,7 @@ func ComputeStats(iterable Iterable) *Stats {
 
 	average := total / totalWeight
 
-	it = iterable.Iterator()
+	it = collection.Iterator()
 
 	sumDiff := 0.0
 

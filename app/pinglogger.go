@@ -62,10 +62,10 @@ func (m *tputMeasuresIterator) HasNext() bool {
 	return m.nextPos < len(m.measures)
 }
 
-func (m *tputMeasuresIterator) Next() stats.Sample {
+func (m *tputMeasuresIterator) Next() stats.Observation {
 	cur := m.measures[m.nextPos]
 	dt := float64(cur.dt) / float64(time.Second)
-	val := stats.Sample{Value: float64(cur.count) / dt, Weight: dt}
+	val := stats.Observation{Value: float64(cur.count) / dt, Weight: dt}
 	m.nextPos++
 	return val
 }
