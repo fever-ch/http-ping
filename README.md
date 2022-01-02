@@ -10,7 +10,7 @@
 This piece of software is similar to the usual [_ping networking utility_](https://en.wikipedia.org/wiki/Ping_(networking_utility)) but instead of working on top of ICMP, it works on top of
 HTTP/S.
 
-Http-Ping is a small, free, easy-to-use command line utility that probes a given URL and displays relevant statistics. It is similar to the popular ping utility, but works over HTTP/S instead of ICMP, and with a URL instead of a computer name/IP address. http-ping supports IPv6 addresses.
+Http-Ping is a small, free, easy-to-use command-line utility that probes a given URL and displays relevant statistics. It is similar to the popular ping utility, but works over HTTP/S instead of ICMP, and with a URL instead of a computer name/IP address. http-ping supports IPv6 addresses.
 
 ## Platforms
 
@@ -28,13 +28,13 @@ Simply type `http-ping -h` to get the list of available commands
 
 ```
 $ http-ping -h
-An utility which evaluates the latency of HTTP/S requests
+An utility that evaluates the latency and throuput of HTTP/S requests
 
 Usage:
   http-ping [flags] target-URL
 
 Flags:
-  -a, --audible-bell                  audible ; include a bell (ASCII 0x07) character in the outhroughput when any successful answer is received
+  -a, --audible-bell                  audible ; include a bell (ASCII 0x07) character in the output when any successful answer is received
       --auth-password string          authentication password
       --auth-username string          authentication username
       --conn-target string            force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)
@@ -69,6 +69,8 @@ Flags:
   -w, --wait duration                 define the time for a response before timing out (default 10s)
       --workers int                   define the number of workers to be used (default 1)
 ```
+
+### Latency
 Measure the latency with the Google Cloud Zurich region with 4 HTTP pings (`-c 4`):
 ```
 $ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 4
@@ -137,6 +139,31 @@ average latency contributions:
 ```
 _note: the latency contribution tree only covers the main steps of the HTTP exchange, thus the sum doesn't fully match._
 
+### Throughput
+`http-ping` can also be used to measure the throughput given by an HTTP/S setup.
+
+_Beware, this measure generates, by design, a lot of traffic on the target, thus it might deteriorate the overall service during the time of measurement. This feature is more appropriate when you want to test your own servers._
+
+Measure the maximum throughput to `URL-TO-TEST` by not waiting between request (`-i 0s`), by enabling throughput measurement (`-t`) and, by allocating 64 workers (`--workers 64`)
+
+```shell
+> http-ping --workers 64 -i 0s -t URL-TO-TEST
+HTTP-PING URL-TO-TEST GET
+
+          throughput: 1922.0 queries/sec, average latency: 32.6 ms
+          throughput: 2037.6 queries/sec, average latency: 31.4 ms
+          throughput: 1951.0 queries/sec, average latency: 32.8 ms
+          throughput: 2006.9 queries/sec, average latency: 31.8 ms
+          throughput: 1871.5 queries/sec, average latency: 34.1 ms
+^C
+--- URL-TO-TEST ping statistics ---
+50470 requests sent, 50470 answers received, 0.0% loss
+round-trip min/avg/max/stddev = 22.034/32.464/87.484/6.929 ms
+
+throughput measures:
+queries throughput min/avg/max/stdev = 1871.5/1957.8/2037.6/59.3 queries/sec  
+```
+
 ## Install on Linux
 
 The [releases](https://github.com/fever-ch/http-ping/releases) are providing packages for the following systems:
@@ -157,7 +184,7 @@ $ brew install fever-ch/tap/http-ping
 
 ## Install on Linux/FreeBSD/MacOS/Windows
 
-The [releases](https://github.com/fever-ch/http-ping/releases) are also containing archive which contains the executable file, `tar.gz` files for Linux/FreeBSD/MacOS ans `zip` files for Windows.
+The [releases](https://github.com/fever-ch/http-ping/releases) are also containing archives which contain the executable file, `tar.gz` files for Linux/FreeBSD/MacOS and `zip` files for Windows.
 
 ## Use with Docker
 ```

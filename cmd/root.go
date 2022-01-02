@@ -229,8 +229,8 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 		Use: "http-ping [flags] target-URL",
 
-		Short: "An utility which evaluates the latency of HTTP/S requests",
-		Long:  `An utility which evaluates the latency of HTTP/S requests`,
+		Short: "An utility that evaluates the latency and throuput of HTTP/S requests",
+		Long:  `An utility that evaluates the latency and throuput of HTTP/S requests`,
 
 		Version: app.Version,
 		RunE:    runAndError(config, xp, appLogic),
