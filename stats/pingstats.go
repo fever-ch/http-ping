@@ -18,7 +18,6 @@ package stats
 
 import (
 	"fmt"
-	"math"
 	"time"
 )
 
@@ -32,38 +31,14 @@ type PingStats struct {
 
 // PingStatsFromLatencies computes PingStats from a serie of ping measurements.
 func PingStatsFromLatencies(measures []Measure) *PingStats {
-	var sum = Measure(0)
-	var max = Measure(math.MinInt64)
-	var min = Measure(math.MaxInt64)
-
-	count := 0
-	for _, m := range measures {
-		if m.IsSuccess() {
-			count++
-			sum += m
-			if m > max {
-				max = m
-			}
-			if m < min {
-				min = m
-			}
-		}
-	}
-	average := float64(sum) / float64(count)
-
-	var squaresSum = 0.0
-
-	for _, m := range measures {
-		diff := float64(m) - average
-		squaresSum += diff * diff
-	}
-	stdDev := math.Sqrt(squaresSum / float64(count))
+	
+	stats := ComputeStats(measuresIterable(measures))
 
 	return &PingStats{
-		Min:     min,
-		Max:     max,
-		Average: Measure(average),
-		StdDev:  Measure(stdDev),
+		Min:     Measure(stats.Min),
+		Max:     Measure(stats.Max),
+		Average: Measure(stats.Average),
+		StdDev:  Measure(stats.StdDev),
 	}
 }
 
@@ -73,4 +48,25 @@ func (ps *PingStats) String() string {
 	}
 
 	return fmt.Sprintf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms", ms(ps.Min), ms(ps.Average), ms(ps.Max), ms(ps.StdDev))
+}
+
+type measuresIterable []Measure
+
+func (m measuresIterable) Iterator() Iterator {
+	return &measuresIterator{measures: m}
+}
+
+type measuresIterator struct {
+	measures []Measure
+	nextPos  int
+}
+
+func (m *measuresIterator) HasNext() bool {
+	return m.nextPos < len(m.measures)
+}
+
+func (m *measuresIterator) Next() Sample {
+	val := Sample{Value: m.measures[m.nextPos].ToFloat(time.Nanosecond), Weight: 1.0}
+	m.nextPos++
+	return val
 }
