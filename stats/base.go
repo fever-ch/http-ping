@@ -63,7 +63,7 @@ func ComputeStats(collection Iterable) *Stats {
 		}
 
 		totalWeight += cur.Weight
-		total += cur.Value
+		total += cur.Value * cur.Weight
 	}
 
 	average := total / totalWeight
