@@ -34,38 +34,40 @@ Usage:
   http-ping [flags] target-URL
 
 Flags:
-  -a, --audible-bell            audible ; include a bell (ASCII 0x07) character in the output when any successful answer is received
-      --auth-password string    authentication password
-      --auth-username string    authentication username
-      --conn-target string      force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)
-      --cookie stringArray      add one or more cookies, in the form name=value
-  -c, --count int               define the number of request to be sent (default unlimited)
-      --disable-compression     the client will not request the remote server to compress answers (hence it might actually do it)
-      --disable-http2           disable the HTTP/2 protocol
-  -K, --disable-keepalive       disable keep-alive feature
-      --dns-cache               cache DNS requests
-  -D, --dns-full-resolution     enable full DNS resolution from the root servers
-  -d, --dns-server string       specify an alternate DNS server for resolutions
-  -x, --extra-parameter         extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy
-  -F, --follow-redirects        follow HTTP redirects (codes 3xx)
-  -H, --head                    perform HTTP HEAD requests instead of GETs
-      --header stringArray      add one or more header, in the form name=value
-  -h, --help                    help for http-ping
-  -k, --insecure                allow insecure server connections when using SSL
-  -i, --interval duration       define the wait time between each request (default 1s)
-  -4, --ipv4                    force IPv4 resolution for dual-stacked sites
-  -6, --ipv6                    force IPv6 resolution for dual-stacked sites
-      --keep-cookies            keep received cookies between requests
-      --method string           select a which HTTP method to be used (default "GET")
-      --no-server-error         ignore server errors (5xx), do not handle them as "lost pings"
-      --parameter stringArray   add one or more parameters to the query, in the form name:value
-  -q, --quiet                   print less details
-      --referrer string         define the referrer
-      --user-agent string       define a custom user-agent (default "Http-Ping/(devel) (https://github.com/fever-ch/http-ping)")
-  -v, --verbose                 print more details
-      --version                 version for http-ping
-  -w, --wait duration           define the time for a response before timing out (default 10s)
-      --workers int             define the number of workers to be used (default 1)
+  -a, --audible-bell                  audible ; include a bell (ASCII 0x07) character in the outhroughput when any successful answer is received
+      --auth-password string          authentication password
+      --auth-username string          authentication username
+      --conn-target string            force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)
+      --cookie stringArray            add one or more cookies, in the form name=value
+  -c, --count int                     define the number of request to be sent (default unlimited)
+      --disable-compression           the client will not request the remote server to compress answers (hence it might actually do it)
+      --disable-http2                 disable the HTTP/2 protocol
+  -K, --disable-keepalive             disable keep-alive feature
+      --dns-cache                     cache DNS requests
+  -D, --dns-full-resolution           enable full DNS resolution from the root servers
+  -d, --dns-server string             specify an alternate DNS server for resolutions
+  -x, --extra-parameter               extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy
+  -F, --follow-redirects              follow HTTP redirects (codes 3xx)
+  -H, --head                          perform HTTP HEAD requests instead of GETs
+      --header stringArray            add one or more header, in the form name=value
+  -h, --help                          help for http-ping
+  -k, --insecure                      allow insecure server connections when using SSL
+  -i, --interval duration             define the wait time between each request (default 1s)
+  -4, --ipv4                          force IPv4 resolution for dual-stacked sites
+  -6, --ipv6                          force IPv6 resolution for dual-stacked sites
+      --keep-cookies                  keep received cookies between requests
+      --method string                 select a which HTTP method to be used (default "GET")
+      --no-server-error               ignore server errors (5xx), do not handle them as "lost pings"
+      --parameter stringArray         add one or more parameters to the query, in the form name:value
+  -q, --quiet                         print less details
+      --referrer string               define the referrer
+  -t, --throughput                    log the number of requests done per second
+  -T, --throughput-refresh duration   sampling time for measuring throughput (default 5s)
+      --user-agent string             define a custom user-agent (default "Http-Ping/(devel) (https://github.com/fever-ch/http-ping)")
+  -v, --verbose                       print more details
+      --version                       version for http-ping
+  -w, --wait duration                 define the time for a response before timing out (default 10s)
+      --workers int                   define the number of workers to be used (default 1)
 ```
 Measure the latency with the Google Cloud Zurich region with 4 HTTP pings (`-c 4`):
 ```
