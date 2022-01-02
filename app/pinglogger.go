@@ -100,10 +100,14 @@ func (logger *quietLogger) onClose() {
 }
 
 func (logger *quietLogger) onThroughputClose() {
-	stat := stats.ComputeStats(throughputMeasuresIterable(logger.throughputMeasures))
 	_, _ = fmt.Fprintf(logger.stdout, "\n")
-	_, _ = fmt.Fprintf(logger.stdout, "throughput measures:\n")
-	_, _ = fmt.Fprintf(logger.stdout, "queries throughput min/avg/max/stdev = %.1f/%.1f/%.1f/%.1f queries/sec \n", stat.Min, stat.Average, stat.Max, stat.StdDev)
+	if len(logger.throughputMeasures) > 0 {
+		stat := stats.ComputeStats(throughputMeasuresIterable(logger.throughputMeasures))
+		_, _ = fmt.Fprintf(logger.stdout, "throughput measures:\n")
+		_, _ = fmt.Fprintf(logger.stdout, "queries throughput min/avg/max/stdev = %.1f/%.1f/%.1f/%.1f queries/sec \n", stat.Min, stat.Average, stat.Max, stat.StdDev)
+	} else {
+		_, _ = fmt.Fprintf(logger.stdout, "not enough time to collect data\n")
+	}
 }
 
 type standardLogger struct {
