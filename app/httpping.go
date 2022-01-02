@@ -133,19 +133,8 @@ func (httpPingImpl *httpPingImpl) Run() error {
 	}
 
 	httpPingImpl.logger.onClose(int64(attempts), int64(successes), lossRate, stats.PingStatsFromLatencies(latencies))
+	if httpPingImpl.config.Tput {
+		httpPingImpl.logger.onTputClose()
+	}
 	return nil
-}
-
-func countToString(b int64) string {
-	const unit = 1000
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB",
-		float64(b)/float64(div), "kMGTPE"[exp])
 }

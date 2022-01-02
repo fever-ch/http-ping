@@ -27,12 +27,14 @@ type logger interface {
 	onMeasure(httpMeasure *HTTPMeasure, id int)
 	onTick(measure tputMeasure)
 	onClose(attempts int64, success int64, lossRate float64, pingStats *stats.PingStats)
+	onTputClose()
 }
 
 type baseLogger struct {
-	config *Config
-	stdout io.Writer
-	pinger Pinger
+	config       *Config
+	stdout       io.Writer
+	pinger       Pinger
+	tputMeasures []tputMeasure
 }
 
 type quietLogger baseLogger
@@ -45,8 +47,31 @@ func (quietLogger *quietLogger) onMeasure(_ *HTTPMeasure, _ int) {
 
 }
 
-func (quietLogger *quietLogger) onTick(_ tputMeasure) {
+type tputMeasuresIterable []tputMeasure
 
+func (m tputMeasuresIterable) Iterator() stats.Iterator {
+	return &tputMeasuresIterator{measures: m}
+}
+
+type tputMeasuresIterator struct {
+	measures []tputMeasure
+	nextPos  int
+}
+
+func (m *tputMeasuresIterator) HasNext() bool {
+	return m.nextPos < len(m.measures)
+}
+
+func (m *tputMeasuresIterator) Next() stats.Sample {
+	cur := m.measures[m.nextPos]
+	dt := float64(cur.dt) / float64(time.Second)
+	val := stats.Sample{Value: float64(cur.count) / dt, Weight: dt}
+	m.nextPos++
+	return val
+}
+
+func (quietLogger *quietLogger) onTick(m tputMeasure) {
+	quietLogger.tputMeasures = append(quietLogger.tputMeasures, m)
 }
 
 func (quietLogger *quietLogger) onClose(attempts int64, successes int64, lossRate float64, pingStats *stats.PingStats) {
@@ -60,7 +85,13 @@ func (quietLogger *quietLogger) onClose(attempts int64, successes int64, lossRat
 	}
 }
 
-//type standardLogger quietLogger
+func (quietLogger *quietLogger) onTputClose() {
+	stat := stats.ComputeStats(tputMeasuresIterable(quietLogger.tputMeasures))
+	_, _ = fmt.Fprintf(quietLogger.stdout, "\n")
+	_, _ = fmt.Fprintf(quietLogger.stdout, "throughput measures:\n")
+	_, _ = fmt.Fprintf(quietLogger.stdout, "queries throughput min/avg/max/stdev = %.1f/%.1f/%.1f/%.1f queries per second\n", stat.Min, stat.Average, stat.Max, stat.StdDev)
+}
+
 type standardLogger struct {
 	quietLogger
 }
@@ -82,19 +113,14 @@ func (logger *standardLogger) onMeasure(measure *HTTPMeasure, id int) {
 }
 
 func (logger *standardLogger) onTick(m tputMeasure) {
-
+	logger.quietLogger.onTick(m)
 	fmt.Printf("          throughput: %s queries/sec, average latency: %.1f ms\n", m.String(), m.queriesDuration.ToFloat(time.Microsecond)/float64(1000*m.count))
 }
 
 func (logger *standardLogger) onClose(attempts int64, successes int64, lossRate float64, pingStats *stats.PingStats) {
 	_, _ = fmt.Fprintf(logger.stdout, "\n")
-	_, _ = fmt.Fprintf(logger.stdout, "--- %s ping statistics ---\n", logger.pinger.URL())
 
-	_, _ = fmt.Fprintf(logger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, successes, lossRate)
-
-	if successes > 0 {
-		_, _ = fmt.Fprintf(logger.stdout, "%s\n", pingStats.String())
-	}
+	logger.quietLogger.onClose(attempts, successes, lossRate, pingStats)
 }
 
 type verboseLogger struct {
@@ -150,13 +176,10 @@ func (verboseLogger *verboseLogger) onMeasure(measure *HTTPMeasure, id int) {
 }
 
 func (verboseLogger *verboseLogger) onClose(attempts int64, successes int64, lossRate float64, pingStats *stats.PingStats) {
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "\n")
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "--- %s ping statistics ---\n", verboseLogger.pinger.URL())
 
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", attempts, successes, lossRate)
+	verboseLogger.standardLogger.onClose(attempts, successes, lossRate, pingStats)
 
-	if successes > 0 {
-		_, _ = fmt.Fprintf(verboseLogger.stdout, "%s\n", pingStats.String())
+	if successes > 0 && !verboseLogger.config.Tput {
 
 		verboseLogger.measureSum.TotalTime = verboseLogger.measureSum.TotalTime.Divide(successes)
 		verboseLogger.measureSum.ConnEstablishment = verboseLogger.measureSum.ConnEstablishment.Divide(successes)
