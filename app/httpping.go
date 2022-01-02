@@ -17,7 +17,6 @@
 package app
 
 import (
-	"fever.ch/http-ping/stats"
 	"fmt"
 	"io"
 	"os"
@@ -84,9 +83,6 @@ func (httpPingImpl *httpPingImpl) Run() error {
 
 	measuresChannel := httpPingImpl.pinger.Ping()
 
-	successes := 0
-	attempts := 0
-	var latencies []stats.Measure
 	ticker := time.NewTicker(5 * time.Second)
 	tickerChan := make(<-chan time.Time)
 	ticker.Stop()
@@ -98,7 +94,6 @@ func (httpPingImpl *httpPingImpl) Run() error {
 		select {
 
 		case <-tickerChan:
-
 			m := tputMeasurer.Measure()
 			httpPingImpl.logger.onTick(m)
 
@@ -106,8 +101,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 			if measure == nil {
 				loop = false
 			} else {
-				httpPingImpl.logger.onMeasure(measure, attempts)
-				attempts++
+				httpPingImpl.logger.onMeasure(measure)
 				if !measure.IsFailure {
 					if config.Tput && !tpuStarted {
 						tputMeasurer.Measure()
@@ -116,8 +110,6 @@ func (httpPingImpl *httpPingImpl) Run() error {
 					}
 					tputMeasurer.Count(measure.TotalTime)
 
-					successes++
-					latencies = append(latencies, measure.TotalTime)
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")
 					}
@@ -127,12 +119,8 @@ func (httpPingImpl *httpPingImpl) Run() error {
 			loop = false
 		}
 	}
-	var lossRate = float64(0)
-	if attempts > 0 {
-		lossRate = float64(100*(attempts-successes)) / float64(attempts)
-	}
 
-	httpPingImpl.logger.onClose(int64(attempts), int64(successes), lossRate, stats.PingStatsFromLatencies(latencies))
+	httpPingImpl.logger.onClose()
 	if httpPingImpl.config.Tput {
 		httpPingImpl.logger.onTputClose()
 	}
