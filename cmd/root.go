@@ -276,7 +276,7 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().BoolVarP(&config.DisableCompression, "disable-compression", "", false, "the client will not request the remote server to compress answers (hence it might actually do it)")
 
-	rootCmd.Flags().BoolVarP(&config.AudibleBell, "audible-bell", "a", false, "audible ; include a bell (ASCII 0x07) character in the output when any successful answer is received")
+	rootCmd.Flags().BoolVarP(&config.AudibleBell, "audible-bell", "a", false, "audible ; include a bell (ASCII 0x07) character in the outhroughput when any successful answer is received")
 
 	rootCmd.Flags().StringVarP(&config.Referrer, "referrer", "", "", "define the referrer")
 
@@ -298,9 +298,9 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().IntVarP(&config.Workers, "workers", "", 1, "define the number of workers to be used")
 
-	rootCmd.Flags().BoolVarP(&config.Tput, "throughput", "t", false, "log the number of requests done per second")
+	rootCmd.Flags().BoolVarP(&config.Throughput, "throughput", "t", false, "log the number of requests done per second")
 
-	rootCmd.Flags().DurationVarP(&config.TputRefresh, "throughput-refresh", "T", 5*time.Second, "sampling time for measuring throughput")
+	rootCmd.Flags().DurationVarP(&config.ThroughputRefresh, "throughput-refresh", "T", 5*time.Second, "sampling time for measuring throughput")
 
 	return rootCmd
 }

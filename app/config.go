@@ -64,8 +64,8 @@ type Config struct {
 	KeepCookies        bool
 	FollowRedirects    bool
 	Workers            int
-	Tput               bool
-	TputRefresh        time.Duration
+	Throughput         bool
+	ThroughputRefresh  time.Duration
 }
 
 // RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClient

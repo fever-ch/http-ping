@@ -87,14 +87,14 @@ func (httpPingImpl *httpPingImpl) Run() error {
 	tickerChan := make(<-chan time.Time)
 	ticker.Stop()
 	tpuStarted := false
-	tputMeasurer := newTputMeasurer()
+	throughputMeasurer := newThroughputMeasurer()
 
 	loop := true
 	for loop {
 		select {
 
 		case <-tickerChan:
-			m := tputMeasurer.Measure()
+			m := throughputMeasurer.Measure()
 			httpPingImpl.logger.onTick(m)
 
 		case measure := <-measuresChannel:
@@ -103,12 +103,12 @@ func (httpPingImpl *httpPingImpl) Run() error {
 			} else {
 				httpPingImpl.logger.onMeasure(measure)
 				if !measure.IsFailure {
-					if config.Tput && !tpuStarted {
-						tputMeasurer.Measure()
-						tickerChan = (time.NewTicker(config.TputRefresh)).C
+					if config.Throughput && !tpuStarted {
+						throughputMeasurer.Measure()
+						tickerChan = (time.NewTicker(config.ThroughputRefresh)).C
 						tpuStarted = true
 					}
-					tputMeasurer.Count(measure.TotalTime)
+					throughputMeasurer.Count(measure.TotalTime)
 
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")
@@ -121,8 +121,8 @@ func (httpPingImpl *httpPingImpl) Run() error {
 	}
 
 	httpPingImpl.logger.onClose()
-	if httpPingImpl.config.Tput {
-		httpPingImpl.logger.onTputClose()
+	if httpPingImpl.config.Throughput {
+		httpPingImpl.logger.onThroughputClose()
 	}
 	return nil
 }

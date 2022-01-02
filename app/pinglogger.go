@@ -25,9 +25,9 @@ import (
 
 type logger interface {
 	onMeasure(httpMeasure *HTTPMeasure)
-	onTick(measure tputMeasure)
+	onTick(measure throughputMeasure)
 	onClose()
-	onTputClose()
+	onThroughputClose()
 }
 
 type measures struct {
@@ -37,41 +37,41 @@ type measures struct {
 }
 
 type quietLogger struct {
-	config       *Config
-	stdout       io.Writer
-	pinger       Pinger
-	measures     measures
-	tputMeasures []tputMeasure
+	config             *Config
+	stdout             io.Writer
+	pinger             Pinger
+	measures           measures
+	throughputMeasures []throughputMeasure
 }
 
 func newQuietLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
 	return &quietLogger{config: config, stdout: stdout, pinger: pinger}
 }
 
-func (quietLogger *quietLogger) onMeasure(m *HTTPMeasure) {
-	quietLogger.measures.attempts++
+func (logger *quietLogger) onMeasure(m *HTTPMeasure) {
+	logger.measures.attempts++
 	if !m.IsFailure {
-		quietLogger.measures.successes++
-		quietLogger.measures.latencies = append(quietLogger.measures.latencies, m.TotalTime)
+		logger.measures.successes++
+		logger.measures.latencies = append(logger.measures.latencies, m.TotalTime)
 	}
 }
 
-type tputMeasuresIterable []tputMeasure
+type throughputMeasuresIterable []throughputMeasure
 
-func (m tputMeasuresIterable) Iterator() stats.Iterator {
-	return &tputMeasuresIterator{measures: m}
+func (m throughputMeasuresIterable) Iterator() stats.Iterator {
+	return &throughputMeasuresIterator{measures: m}
 }
 
-type tputMeasuresIterator struct {
-	measures []tputMeasure
+type throughputMeasuresIterator struct {
+	measures []throughputMeasure
 	nextPos  int
 }
 
-func (m *tputMeasuresIterator) HasNext() bool {
+func (m *throughputMeasuresIterator) HasNext() bool {
 	return m.nextPos < len(m.measures)
 }
 
-func (m *tputMeasuresIterator) Next() stats.Observation {
+func (m *throughputMeasuresIterator) Next() stats.Observation {
 	cur := m.measures[m.nextPos]
 	dt := float64(cur.dt) / float64(time.Second)
 	val := stats.Observation{Value: float64(cur.count) / dt, Weight: dt}
@@ -79,31 +79,31 @@ func (m *tputMeasuresIterator) Next() stats.Observation {
 	return val
 }
 
-func (quietLogger *quietLogger) onTick(m tputMeasure) {
-	quietLogger.tputMeasures = append(quietLogger.tputMeasures, m)
+func (logger *quietLogger) onTick(m throughputMeasure) {
+	logger.throughputMeasures = append(logger.throughputMeasures, m)
 }
 
-func (quietLogger *quietLogger) onClose() {
+func (logger *quietLogger) onClose() {
 	var lossRate = float64(0)
-	if quietLogger.measures.attempts > 0 {
-		lossRate = float64(quietLogger.measures.attempts-quietLogger.measures.successes) / float64(quietLogger.measures.attempts)
+	if logger.measures.attempts > 0 {
+		lossRate = float64(logger.measures.attempts-logger.measures.successes) / float64(logger.measures.attempts)
 	}
-	pingStats := stats.PingStatsFromLatencies(quietLogger.measures.latencies)
+	pingStats := stats.PingStatsFromLatencies(logger.measures.latencies)
 
-	_, _ = fmt.Fprintf(quietLogger.stdout, "--- %s ping statistics ---\n", quietLogger.pinger.URL())
+	_, _ = fmt.Fprintf(logger.stdout, "--- %s ping statistics ---\n", logger.pinger.URL())
 
-	_, _ = fmt.Fprintf(quietLogger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", quietLogger.measures.attempts, quietLogger.measures.successes, lossRate)
+	_, _ = fmt.Fprintf(logger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", logger.measures.attempts, logger.measures.successes, lossRate)
 
-	if quietLogger.measures.successes > 0 {
-		_, _ = fmt.Fprintf(quietLogger.stdout, "%s\n", pingStats.String())
+	if logger.measures.successes > 0 {
+		_, _ = fmt.Fprintf(logger.stdout, "%s\n", pingStats.String())
 	}
 }
 
-func (quietLogger *quietLogger) onTputClose() {
-	stat := stats.ComputeStats(tputMeasuresIterable(quietLogger.tputMeasures))
-	_, _ = fmt.Fprintf(quietLogger.stdout, "\n")
-	_, _ = fmt.Fprintf(quietLogger.stdout, "throughput measures:\n")
-	_, _ = fmt.Fprintf(quietLogger.stdout, "queries throughput min/avg/max/stdev = %.1f/%.1f/%.1f/%.1f queries/sec \n", stat.Min, stat.Average, stat.Max, stat.StdDev)
+func (logger *quietLogger) onThroughputClose() {
+	stat := stats.ComputeStats(throughputMeasuresIterable(logger.throughputMeasures))
+	_, _ = fmt.Fprintf(logger.stdout, "\n")
+	_, _ = fmt.Fprintf(logger.stdout, "throughput measures:\n")
+	_, _ = fmt.Fprintf(logger.stdout, "queries throughput min/avg/max/stdev = %.1f/%.1f/%.1f/%.1f queries/sec \n", stat.Min, stat.Average, stat.Max, stat.StdDev)
 }
 
 type standardLogger struct {
@@ -117,7 +117,7 @@ func newStandardLogger(config *Config, stdout io.Writer, pinger Pinger) *standar
 func (logger *standardLogger) onMeasure(measure *HTTPMeasure) {
 	logger.quietLogger.onMeasure(measure)
 
-	if logger.config.Tput {
+	if logger.config.Throughput {
 		return
 	}
 	if measure.IsFailure {
@@ -128,7 +128,7 @@ func (logger *standardLogger) onMeasure(measure *HTTPMeasure) {
 
 }
 
-func (logger *standardLogger) onTick(m tputMeasure) {
+func (logger *standardLogger) onTick(m throughputMeasure) {
 	logger.quietLogger.onTick(m)
 	fmt.Printf("          throughput: %s queries/sec, average latency: %.1f ms\n", m.String(), m.queriesDuration.ToFloat(time.Microsecond)/float64(1000*m.count))
 }
@@ -155,66 +155,66 @@ func newVerboseLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
 	}
 }
 
-func (verboseLogger *verboseLogger) onMeasure(measure *HTTPMeasure) {
-	verboseLogger.standardLogger.onMeasure(measure)
-	if verboseLogger.config.Tput {
+func (logger *verboseLogger) onMeasure(measure *HTTPMeasure) {
+	logger.standardLogger.onMeasure(measure)
+	if logger.config.Throughput {
 		return
 	}
 	if measure.IsFailure {
 		return
 	}
 
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "          proto=%s, socket reused=%t, compressed=%t\n", measure.Proto, measure.SocketReused, measure.Compressed)
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "          network i/o: bytes read=%d, bytes written=%d\n", measure.InBytes, measure.OutBytes)
+	_, _ = fmt.Fprintf(logger.stdout, "          proto=%s, socket reused=%t, compressed=%t\n", measure.Proto, measure.SocketReused, measure.Compressed)
+	_, _ = fmt.Fprintf(logger.stdout, "          network i/o: bytes read=%d, bytes written=%d\n", measure.InBytes, measure.OutBytes)
 
 	if measure.TLSEnabled {
-		_, _ = fmt.Fprintf(verboseLogger.stdout, "          tls version=%s\n", measure.TLSVersion)
+		_, _ = fmt.Fprintf(logger.stdout, "          tls version=%s\n", measure.TLSVersion)
 	}
 
-	verboseLogger.measureSum.TotalTime += measure.TotalTime
+	logger.measureSum.TotalTime += measure.TotalTime
 
-	verboseLogger.measureSum.ConnEstablishment = verboseLogger.measureSum.ConnEstablishment.SumIfValid(measure.ConnEstablishment)
-	verboseLogger.measureSum.DNSResolution = verboseLogger.measureSum.DNSResolution.SumIfValid(measure.DNSResolution)
-	verboseLogger.measureSum.TCPHandshake = verboseLogger.measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
-	verboseLogger.measureSum.TLSDuration = verboseLogger.measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
-	verboseLogger.measureSum.RequestSending += measure.RequestSending
-	verboseLogger.measureSum.Wait += measure.Wait
-	verboseLogger.measureSum.ResponseIngesting += measure.ResponseIngesting
+	logger.measureSum.ConnEstablishment = logger.measureSum.ConnEstablishment.SumIfValid(measure.ConnEstablishment)
+	logger.measureSum.DNSResolution = logger.measureSum.DNSResolution.SumIfValid(measure.DNSResolution)
+	logger.measureSum.TCPHandshake = logger.measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
+	logger.measureSum.TLSDuration = logger.measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
+	logger.measureSum.RequestSending += measure.RequestSending
+	logger.measureSum.Wait += measure.Wait
+	logger.measureSum.ResponseIngesting += measure.ResponseIngesting
 
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "\n")
+	_, _ = fmt.Fprintf(logger.stdout, "\n")
 
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "          latency contributions:\n")
+	_, _ = fmt.Fprintf(logger.stdout, "          latency contributions:\n")
 
-	verboseLogger.drawMeasure(measure, verboseLogger.stdout)
+	logger.drawMeasure(measure, logger.stdout)
 
-	_, _ = fmt.Fprintf(verboseLogger.stdout, "\n")
+	_, _ = fmt.Fprintf(logger.stdout, "\n")
 }
 
-func (verboseLogger *verboseLogger) onClose() {
+func (logger *verboseLogger) onClose() {
 
-	verboseLogger.standardLogger.onClose()
-	successes := verboseLogger.measures.successes
+	logger.standardLogger.onClose()
+	successes := logger.measures.successes
 
-	if successes > 0 && !verboseLogger.config.Tput {
+	if successes > 0 && !logger.config.Throughput {
 
-		verboseLogger.measureSum.TotalTime = verboseLogger.measureSum.TotalTime.Divide(successes)
-		verboseLogger.measureSum.ConnEstablishment = verboseLogger.measureSum.ConnEstablishment.Divide(successes)
-		verboseLogger.measureSum.DNSResolution = verboseLogger.measureSum.DNSResolution.Divide(successes)
-		verboseLogger.measureSum.TCPHandshake = verboseLogger.measureSum.TCPHandshake.Divide(successes)
-		verboseLogger.measureSum.TLSDuration = verboseLogger.measureSum.TLSDuration.Divide(successes)
-		verboseLogger.measureSum.RequestSending = verboseLogger.measureSum.RequestSending.Divide(successes)
-		verboseLogger.measureSum.Wait = verboseLogger.measureSum.Wait.Divide(successes)
-		verboseLogger.measureSum.ResponseIngesting = verboseLogger.measureSum.ResponseIngesting.Divide(successes)
+		logger.measureSum.TotalTime = logger.measureSum.TotalTime.Divide(successes)
+		logger.measureSum.ConnEstablishment = logger.measureSum.ConnEstablishment.Divide(successes)
+		logger.measureSum.DNSResolution = logger.measureSum.DNSResolution.Divide(successes)
+		logger.measureSum.TCPHandshake = logger.measureSum.TCPHandshake.Divide(successes)
+		logger.measureSum.TLSDuration = logger.measureSum.TLSDuration.Divide(successes)
+		logger.measureSum.RequestSending = logger.measureSum.RequestSending.Divide(successes)
+		logger.measureSum.Wait = logger.measureSum.Wait.Divide(successes)
+		logger.measureSum.ResponseIngesting = logger.measureSum.ResponseIngesting.Divide(successes)
 
-		verboseLogger.measureSum.TLSEnabled = verboseLogger.measureSum.TLSDuration > 0
+		logger.measureSum.TLSEnabled = logger.measureSum.TLSDuration > 0
 
-		_, _ = fmt.Fprintf(verboseLogger.stdout, "\naverage latency contributions:\n")
+		_, _ = fmt.Fprintf(logger.stdout, "\naverage latency contributions:\n")
 
-		verboseLogger.drawMeasure(verboseLogger.measureSum, verboseLogger.stdout)
+		logger.drawMeasure(logger.measureSum, logger.stdout)
 	}
 }
 
-func (verboseLogger *verboseLogger) drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
+func (logger *verboseLogger) drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
 	entries := measureEntry{
 		label:    "request and response",
 		duration: measure.TotalTime,
@@ -234,7 +234,7 @@ func (verboseLogger *verboseLogger) drawMeasure(measure *HTTPMeasure, stdout io.
 		entries.children[0].children = entries.children[0].children[0:2]
 	}
 
-	l := verboseLogger.makeTreeList(&entries)
+	l := logger.makeTreeList(&entries)
 
 	for i, e := range l {
 		pipes := make([]string, e.depth)
@@ -268,7 +268,7 @@ type measureEntryVisit struct {
 	depth        int
 }
 
-func (verboseLogger *verboseLogger) makeTreeList(root *measureEntry) []measureEntryVisit {
+func (logger *verboseLogger) makeTreeList(root *measureEntry) []measureEntryVisit {
 	var list []measureEntryVisit
 
 	var visit func(entry *measureEntry, depth int)

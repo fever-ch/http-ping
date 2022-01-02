@@ -22,58 +22,58 @@ import (
 	"time"
 )
 
-type tputMeasurer struct {
+type throughputMeasurer struct {
 	ts       time.Time
 	counter  uint64
 	duration stats.Measure
 }
 
-type tputMeasure struct {
+type throughputMeasure struct {
 	dt              time.Duration
 	count           uint64
 	queriesDuration stats.Measure
 }
 
-func newTputMeasurer() *tputMeasurer {
-	return &tputMeasurer{ts: time.Now()}
+func newThroughputMeasurer() *throughputMeasurer {
+	return &throughputMeasurer{ts: time.Now()}
 }
 
-func (tputMeasurer *tputMeasurer) Count(duration stats.Measure) {
-	tputMeasurer.counter++
-	tputMeasurer.duration += duration
+func (throughputMeasurer *throughputMeasurer) Count(duration stats.Measure) {
+	throughputMeasurer.counter++
+	throughputMeasurer.duration += duration
 }
 
-func (tputMeasurer *tputMeasurer) Measure() tputMeasure {
+func (throughputMeasurer *throughputMeasurer) Measure() throughputMeasure {
 	now := time.Now()
-	dq := tputMeasurer.counter
-	dt := now.Sub(tputMeasurer.ts)
-	qd := tputMeasurer.duration
-	tputMeasurer.counter = 0
-	tputMeasurer.duration = 0
-	tputMeasurer.ts = now
+	dq := throughputMeasurer.counter
+	dt := now.Sub(throughputMeasurer.ts)
+	qd := throughputMeasurer.duration
+	throughputMeasurer.counter = 0
+	throughputMeasurer.duration = 0
+	throughputMeasurer.ts = now
 
-	return tputMeasure{
+	return throughputMeasure{
 		dt:              dt,
 		count:           dq,
 		queriesDuration: qd,
 	}
 }
 
-func (measure *tputMeasure) String() string {
+func (measure *throughputMeasure) String() string {
 	x := 1e9 * float64(measure.count) / float64(measure.dt.Nanoseconds())
 	return fmt.Sprintf("%.1f", x)
 }
 
-func (measure *tputMeasure) Add(other tputMeasure) tputMeasure {
-	return tputMeasure{
+func (measure *throughputMeasure) Add(other throughputMeasure) throughputMeasure {
+	return throughputMeasure{
 		dt:              measure.dt + other.dt,
 		count:           measure.count + other.count,
 		queriesDuration: measure.queriesDuration + other.queriesDuration,
 	}
 }
 
-func (measure *tputMeasure) Sub(other tputMeasure) tputMeasure {
-	return tputMeasure{
+func (measure *throughputMeasure) Sub(other throughputMeasure) throughputMeasure {
+	return throughputMeasure{
 		dt:              measure.dt - other.dt,
 		count:           measure.count - other.count,
 		queriesDuration: measure.queriesDuration - other.queriesDuration,
