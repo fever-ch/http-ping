@@ -34,10 +34,6 @@ type tputMeasure struct {
 	queriesDuration stats.Measure
 }
 
-func (measure *tputMeasure) averageLatency(unit time.Duration) float64 {
-	return measure.queriesDuration.ToFloat(unit) / float64(measure.count)
-}
-
 func newTputMeasurer() *tputMeasurer {
 	return &tputMeasurer{ts: time.Now()}
 }

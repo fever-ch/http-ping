@@ -97,7 +97,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 	for loop {
 		select {
 
-		case _ = <-tickerChan:
+		case <-tickerChan:
 
 			m := tputMeasurer.Measure()
 			httpPingImpl.logger.onTick(m)

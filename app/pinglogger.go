@@ -30,14 +30,12 @@ type logger interface {
 	onTputClose()
 }
 
-type baseLogger struct {
+type quietLogger struct {
 	config       *Config
 	stdout       io.Writer
 	pinger       Pinger
 	tputMeasures []tputMeasure
 }
-
-type quietLogger baseLogger
 
 func newQuietLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
 	return &quietLogger{config: config, stdout: stdout, pinger: pinger}
