@@ -89,7 +89,7 @@ func (quietLogger *quietLogger) onTputClose() {
 	stat := stats.ComputeStats(tputMeasuresIterable(quietLogger.tputMeasures))
 	_, _ = fmt.Fprintf(quietLogger.stdout, "\n")
 	_, _ = fmt.Fprintf(quietLogger.stdout, "throughput measures:\n")
-	_, _ = fmt.Fprintf(quietLogger.stdout, "queries throughput min/avg/max/stdev = %.1f/%.1f/%.1f/%.1f queries per second\n", stat.Min, stat.Average, stat.Max, stat.StdDev)
+	_, _ = fmt.Fprintf(quietLogger.stdout, "queries throughput min/avg/max/stdev = %.1f/%.1f/%.1f/%.1f queries/sec \n", stat.Min, stat.Average, stat.Max, stat.StdDev)
 }
 
 type standardLogger struct {
