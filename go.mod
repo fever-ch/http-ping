@@ -3,11 +3,11 @@ module fever.ch/http-ping
 go 1.17
 
 require (
-	github.com/domainr/dnsr v0.0.0-20211217081932-6720aab3de6f
+	github.com/domainr/dnsr v0.0.0-20211227160753-edd38e5a7117
 	github.com/miekg/dns v1.1.45
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
+	golang.org/x/net v0.0.0-20220105145211-5b0dc2dfae98
 )
 
 require (
