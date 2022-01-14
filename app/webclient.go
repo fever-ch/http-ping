@@ -111,14 +111,14 @@ func NewWebClient(config *Config, runtimeConfig *RuntimeConfig) (WebClient, erro
 
 	startDNSHook := func(ctx context.Context) {
 		trace := httptrace.ContextClientTrace(ctx)
-		if trace != nil || trace.DNSStart != nil {
+		if trace != nil && trace.DNSStart != nil {
 			trace.DNSStart(httptrace.DNSStartInfo{})
 		}
 	}
 
 	stopDNSHook := func(ctx context.Context) {
 		trace := httptrace.ContextClientTrace(ctx)
-		if trace != nil || trace.DNSDone != nil {
+		if trace != nil && trace.DNSDone != nil {
 			trace.DNSDone(httptrace.DNSDoneInfo{})
 		}
 	}
