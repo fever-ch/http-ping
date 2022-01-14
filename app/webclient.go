@@ -333,6 +333,10 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	responseTimer.stop()
 	totalTimer.stop()
 
+	if webClient.config.DisableKeepAlive {
+		webClient.httpClient.CloseIdleConnections()
+	}
+
 	failed := false
 	failureCause := ""
 
