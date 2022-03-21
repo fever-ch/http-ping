@@ -1,6 +1,6 @@
 module fever.ch/http-ping
 
-go 1.17
+go 1.18
 
 require (
 	github.com/domainr/dnsr v0.0.0-20220317081942-b1bdd899c6bc
