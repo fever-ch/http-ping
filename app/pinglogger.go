@@ -92,7 +92,7 @@ func (logger *quietLogger) onClose() {
 
 	_, _ = fmt.Fprintf(logger.stdout, "--- %s ping statistics ---\n", logger.pinger.URL())
 
-	_, _ = fmt.Fprintf(logger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", logger.measures.attempts, logger.measures.successes, lossRate)
+	_, _ = fmt.Fprintf(logger.stdout, "%d requests sent, %d answers received, %.1f%% loss\n", logger.measures.attempts, logger.measures.successes, lossRate*100)
 
 	if logger.measures.successes > 0 {
 		_, _ = fmt.Fprintf(logger.stdout, "%s\n", pingStats.String())
