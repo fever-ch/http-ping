@@ -89,19 +89,18 @@ func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, 
 	} else if network == "ip6" {
 		return resolveWithSpecificServerQtype(dns.TypeAAAA, server, host)
 	} else {
-		var ips []*net.IP
+		var ipv6Address []*net.IP = nil
 
 		answersChan := make(chan *resolveAnswer)
+
 		ret := func(qtype uint16) {
 			out, err := resolveWithSpecificServerQtype(qtype, server, host)
 
 			answersChan <- &resolveAnswer{out, err, qtype}
-
 		}
 		go ret(dns.TypeA)
 		go ret(dns.TypeAAAA)
 
-		oneSucceeded := false
 		for i := 0; i < 2; i++ {
 			if answer := <-answersChan; answer.err == nil {
 
@@ -109,18 +108,18 @@ func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, 
 					if answer.qtype == dns.TypeA {
 						return answer.ip, nil
 					}
-					ips = append(ips, answer.ip...)
+
+					ipv6Address = append(ipv6Address, answer.ip...)
 				}
 
-				oneSucceeded = true
 			}
 
 		}
 
-		if !oneSucceeded {
+		if ipv6Address == nil {
 			return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
 		}
-		return ips, nil
+		return ipv6Address, nil
 	}
 
 }
