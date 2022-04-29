@@ -48,13 +48,20 @@ type WebClient interface {
 
 // WebClientBuilder represents an HTTP/S clientBuilder designed to do performance analysis
 type WebClientBuilder interface {
-	//DoMeasure(followRedirect bool) *HTTPMeasure
-
 	URL() string
 
 	SetURL(url *url.URL)
 
 	NewInstance() WebClient
+}
+
+type webClientBuilderImpl struct {
+	httpClient    *http.Client
+	connTarget    string
+	config        *Config
+	runtimeConfig *RuntimeConfig
+	url           *url.URL
+	resolver      *resolver
 }
 
 type webClientImpl struct {
@@ -67,15 +74,6 @@ type webClientImpl struct {
 
 	writes int64
 	reads  int64
-}
-
-func (webClient *webClientImpl) NewInstance() WebClient {
-	w, _ := newWebClient(webClient.config, webClient.runtimeConfig)
-
-	w.url = webClient.url
-	w.updateConnTarget()
-
-	return w
 }
 
 func init() {
@@ -107,7 +105,7 @@ func (webClient *webClientImpl) updateConnTarget() {
 
 // NewWebClientBuilder builds a new instance of webClientImpl which will provides functions for Http-Ping
 func NewWebClientBuilder(config *Config, runtimeConfig *RuntimeConfig) (WebClientBuilder, error) {
-	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
+	webClient := webClientBuilderImpl{config: config, runtimeConfig: runtimeConfig}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
 		return nil, err
@@ -472,4 +470,47 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		Headers:      &res.Header,
 	}
 
+}
+
+func (webClientBuilder *webClientBuilderImpl) URL() string {
+	return webClientBuilder.url.String()
+}
+
+func (webClientBuilder *webClientBuilderImpl) SetURL(url *url.URL) {
+	webClientBuilder.url = url
+}
+
+func (webClientBuilder *webClientBuilderImpl) GetURL() *url.URL {
+	return webClientBuilder.url
+}
+
+func (webClientBuilder *webClientBuilderImpl) NewInstance() WebClient {
+	w, _ := newWebClient(webClientBuilder.config, webClientBuilder.runtimeConfig)
+
+	w.url = webClientBuilder.url
+	w.updateConnTarget()
+
+	return w
+}
+
+func (webClientBuilder *webClientBuilderImpl) updateConnTarget() {
+	if webClientBuilder.config.ConnTarget == "" {
+		webClientBuilder.resolver = newResolver(webClientBuilder.config)
+
+		webClientBuilder.connTarget = webClientBuilder.url.Hostname()
+		ipAddr := webClientBuilder.url.Hostname()
+
+		var port = webClientBuilder.url.Port()
+		if port == "" {
+			port = portMap[webClientBuilder.url.Scheme]
+		}
+
+		if strings.Contains(ipAddr, ":") {
+			webClientBuilder.connTarget = fmt.Sprintf("[%s]:%s", ipAddr, port)
+		} else {
+			webClientBuilder.connTarget = fmt.Sprintf("%s:%s", ipAddr, port)
+		}
+	} else {
+		webClientBuilder.connTarget = webClientBuilder.config.ConnTarget
+	}
 }
