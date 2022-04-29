@@ -60,8 +60,8 @@ type Pinger interface {
 }
 
 type pingerImpl struct {
-	client WebClient
-	config *Config
+	clientBuilder WebClientBuilder
+	config        *Config
 }
 
 // NewPinger builds a new pingerImpl
@@ -71,18 +71,18 @@ func NewPinger(config *Config, runtimeConfig *RuntimeConfig) (Pinger, error) {
 
 	pinger.config = config
 
-	client, err := NewWebClient(config, runtimeConfig)
+	client, err := NewWebClientBuilder(config, runtimeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("%s (%s)", err, config.IPProtocol)
 	}
 
-	pinger.client = client
+	pinger.clientBuilder = client
 
 	return &pinger, nil
 }
 
 func (pinger *pingerImpl) URL() string {
-	return pinger.client.URL()
+	return pinger.clientBuilder.URL()
 }
 
 // Ping actually does the pinging specified in config
@@ -92,7 +92,10 @@ func (pinger *pingerImpl) Ping() <-chan *HTTPMeasure {
 	var wg sync.WaitGroup
 
 	if pinger.config.FollowRedirects {
-		pinger.client.DoMeasure(true)
+		i := pinger.clientBuilder.NewInstance()
+		i.DoMeasure(true)
+		pinger.clientBuilder.SetURL(i.GetURL())
+
 	}
 
 	for i := 0; i < pinger.config.Workers; i++ {
@@ -100,13 +103,7 @@ func (pinger *pingerImpl) Ping() <-chan *HTTPMeasure {
 
 		go func() {
 
-			var client WebClient
-
-			if pinger.config.Workers == 1 {
-				client = pinger.client
-			} else {
-				client = pinger.client.Clone()
-			}
+			client := pinger.clientBuilder.NewInstance()
 
 			defer wg.Done()
 

@@ -68,7 +68,7 @@ type Config struct {
 	ThroughputRefresh  time.Duration
 }
 
-// RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClient
+// RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClientBuilder
 type RuntimeConfig struct {
 	RedirectCallBack func(url string)
 }

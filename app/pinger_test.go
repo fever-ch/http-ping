@@ -17,15 +17,18 @@
 package app
 
 import (
+	"net/url"
 	"testing"
 )
 
 type webClientMock struct{}
 
+type webClientBuilderMock struct{}
+
 func TestPinger(t *testing.T) {
 	wanted := 123
 	pinger, _ := NewPinger(&Config{Workers: 1, Count: int64(wanted)}, &RuntimeConfig{})
-	pinger.(*pingerImpl).client = &webClientMock{}
+	pinger.(*pingerImpl).clientBuilder = &webClientBuilderMock{}
 	ch := pinger.Ping()
 
 	count := 0
@@ -45,6 +48,17 @@ func (webClientMock *webClientMock) URL() string {
 	return "https://www.google.com"
 }
 
-func (webClientMock *webClientMock) Clone() WebClient {
-	return webClientMock
+func (webClientMock *webClientMock) GetURL() *url.URL {
+	u, _ := url.Parse(webClientMock.URL())
+	return u
+}
+
+func (webClientBuilderMock *webClientBuilderMock) URL() string {
+	return "https://www.google.com"
+}
+
+func (webClientBuilderMock *webClientBuilderMock) SetURL(_ *url.URL) {}
+
+func (webClientBuilderMock *webClientBuilderMock) NewInstance() WebClient {
+	return &webClientMock{}
 }

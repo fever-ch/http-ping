@@ -39,13 +39,22 @@ var portMap = map[string]string{
 	"https": "443",
 }
 
-// WebClient represents an HTTP/S client designed to do performance analysis
+//WebClient represents an HTTP/S clientBuilder designed to do performance analysis
 type WebClient interface {
 	DoMeasure(followRedirect bool) *HTTPMeasure
 
+	GetURL() *url.URL
+}
+
+// WebClientBuilder represents an HTTP/S clientBuilder designed to do performance analysis
+type WebClientBuilder interface {
+	//DoMeasure(followRedirect bool) *HTTPMeasure
+
 	URL() string
 
-	Clone() WebClient
+	SetURL(url *url.URL)
+
+	NewInstance() WebClient
 }
 
 type webClientImpl struct {
@@ -60,12 +69,12 @@ type webClientImpl struct {
 	reads  int64
 }
 
-func (webClient *webClientImpl) Clone() WebClient {
-	w, _ := NewWebClient(webClient.config, webClient.runtimeConfig)
-	if wc, ok := w.(*webClientImpl); ok {
-		wc.url = webClient.url
-		wc.updateConnTarget()
-	}
+func (webClient *webClientImpl) NewInstance() WebClient {
+	w, _ := newWebClient(webClient.config, webClient.runtimeConfig)
+
+	w.url = webClient.url
+	w.updateConnTarget()
+
 	return w
 }
 
@@ -96,8 +105,78 @@ func (webClient *webClientImpl) updateConnTarget() {
 	}
 }
 
-// NewWebClient builds a new instance of webClientImpl which will provides functions for Http-Ping
-func NewWebClient(config *Config, runtimeConfig *RuntimeConfig) (WebClient, error) {
+// NewWebClientBuilder builds a new instance of webClientImpl which will provides functions for Http-Ping
+func NewWebClientBuilder(config *Config, runtimeConfig *RuntimeConfig) (WebClientBuilder, error) {
+	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
+	parsedURL, err := url.Parse(config.Target)
+	if err != nil {
+		return nil, err
+	}
+	webClient.url = parsedURL
+
+	webClient.updateConnTarget()
+
+	dialer := &net.Dialer{}
+
+	startDNSHook := func(ctx context.Context) {
+		trace := httptrace.ContextClientTrace(ctx)
+		if trace != nil && trace.DNSStart != nil {
+			trace.DNSStart(httptrace.DNSStartInfo{})
+		}
+	}
+
+	stopDNSHook := func(ctx context.Context) {
+		trace := httptrace.ContextClientTrace(ctx)
+		if trace != nil && trace.DNSDone != nil {
+			trace.DNSDone(httptrace.DNSDoneInfo{})
+		}
+	}
+
+	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
+		var ipaddr string
+
+		startDNSHook(ctx)
+
+		if webClient.config.ConnTarget == "" {
+			resolvedIpaddr, err := webClient.resolver.resolveConn(webClient.connTarget)
+
+			if err != nil {
+				return nil, err
+			}
+			ipaddr = resolvedIpaddr
+		} else {
+			ipaddr = webClient.config.ConnTarget
+		}
+		stopDNSHook(ctx)
+
+		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
+	}
+
+	webClient.httpClient = &http.Client{
+		Timeout: webClient.config.Wait,
+		Transport: &http.Transport{
+			Proxy:       http.ProxyFromEnvironment,
+			DialContext: dialCtx,
+
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: config.NoCheckCertificate,
+			},
+			DisableCompression: config.DisableCompression,
+			ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
+			MaxIdleConns:       10,
+			DisableKeepAlives:  config.DisableKeepAlive,
+			IdleConnTimeout:    config.Interval + config.Wait,
+		},
+	}
+
+	if webClient.config.DisableHTTP2 {
+		webClient.httpClient.Transport.(*http.Transport).TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	}
+
+	return &webClient, nil
+}
+
+func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
 	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
@@ -169,6 +248,14 @@ func NewWebClient(config *Config, runtimeConfig *RuntimeConfig) (WebClient, erro
 
 func (webClient *webClientImpl) URL() string {
 	return webClient.url.String()
+}
+
+func (webClient *webClientImpl) SetURL(url *url.URL) {
+	webClient.url = url
+}
+
+func (webClient *webClientImpl) GetURL() *url.URL {
+	return webClient.url
 }
 
 func (webClient *webClientImpl) checkRedirectFollow(req *http.Request, _ []*http.Request) error {

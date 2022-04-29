@@ -39,18 +39,18 @@ func TestWithEmbeddedWebServer(t *testing.T) {
 
 	url := ts.URL
 
-	var webClient WebClient
+	var webClient WebClientBuilder
 	var measure *HTTPMeasure
 
-	webClient, _ = NewWebClient(&Config{Target: fmt.Sprintf("%s/500", url), NoCheckCertificate: true}, &RuntimeConfig{})
-	measure = webClient.DoMeasure(false)
+	webClient, _ = NewWebClientBuilder(&Config{Target: fmt.Sprintf("%s/500", url), NoCheckCertificate: true}, &RuntimeConfig{})
+	measure = webClient.NewInstance().DoMeasure(false)
 
 	if !measure.IsFailure || measure.StatusCode != 500 {
 		t.Errorf("Request to server should have failed, 500")
 	}
 
-	webClient, _ = NewWebClient(&Config{Target: fmt.Sprintf("%s/200", url), NoCheckCertificate: true}, &RuntimeConfig{})
-	measure = webClient.DoMeasure(false)
+	webClient, _ = NewWebClientBuilder(&Config{Target: fmt.Sprintf("%s/200", url), NoCheckCertificate: true}, &RuntimeConfig{})
+	measure = webClient.NewInstance().DoMeasure(false)
 
 	if measure.IsFailure || measure.StatusCode != 200 {
 		t.Errorf("Request to server should have succeed, 200")
@@ -58,7 +58,7 @@ func TestWithEmbeddedWebServer(t *testing.T) {
 
 	ts.Close()
 
-	measure = webClient.DoMeasure(false)
+	measure = webClient.NewInstance().DoMeasure(false)
 
 	if !measure.IsFailure {
 		t.Errorf("Request to server should have failed")
