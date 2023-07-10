@@ -23,7 +23,6 @@ import (
 	"fever.ch/http-ping/net/sockettrace"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -39,29 +38,11 @@ var portMap = map[string]string{
 	"https": "443",
 }
 
-//WebClient represents an HTTP/S clientBuilder designed to do performance analysis
+// WebClient represents an HTTP/S clientBuilder designed to do performance analysis
 type WebClient interface {
 	DoMeasure(followRedirect bool) *HTTPMeasure
 
 	GetURL() *url.URL
-}
-
-// WebClientBuilder represents an HTTP/S clientBuilder designed to do performance analysis
-type WebClientBuilder interface {
-	URL() string
-
-	SetURL(url *url.URL)
-
-	NewInstance() WebClient
-}
-
-type webClientBuilderImpl struct {
-	httpClient    *http.Client
-	connTarget    string
-	config        *Config
-	runtimeConfig *RuntimeConfig
-	url           *url.URL
-	resolver      *resolver
 }
 
 type webClientImpl struct {
@@ -101,77 +82,6 @@ func (webClient *webClientImpl) updateConnTarget() {
 	} else {
 		webClient.connTarget = webClient.config.ConnTarget
 	}
-}
-
-// NewWebClientBuilder builds a new instance of webClientImpl which will provides functions for Http-Ping
-func NewWebClientBuilder(config *Config, runtimeConfig *RuntimeConfig) (WebClientBuilder, error) {
-	webClient := webClientBuilderImpl{config: config, runtimeConfig: runtimeConfig}
-	parsedURL, err := url.Parse(config.Target)
-	if err != nil {
-		return nil, err
-	}
-	webClient.url = parsedURL
-
-	webClient.updateConnTarget()
-
-	dialer := &net.Dialer{}
-
-	startDNSHook := func(ctx context.Context) {
-		trace := httptrace.ContextClientTrace(ctx)
-		if trace != nil && trace.DNSStart != nil {
-			trace.DNSStart(httptrace.DNSStartInfo{})
-		}
-	}
-
-	stopDNSHook := func(ctx context.Context) {
-		trace := httptrace.ContextClientTrace(ctx)
-		if trace != nil && trace.DNSDone != nil {
-			trace.DNSDone(httptrace.DNSDoneInfo{})
-		}
-	}
-
-	dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
-		var ipaddr string
-
-		startDNSHook(ctx)
-
-		if webClient.config.ConnTarget == "" {
-			resolvedIpaddr, err := webClient.resolver.resolveConn(webClient.connTarget)
-
-			if err != nil {
-				return nil, err
-			}
-			ipaddr = resolvedIpaddr
-		} else {
-			ipaddr = webClient.config.ConnTarget
-		}
-		stopDNSHook(ctx)
-
-		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
-	}
-
-	webClient.httpClient = &http.Client{
-		Timeout: webClient.config.Wait,
-		Transport: &http.Transport{
-			Proxy:       http.ProxyFromEnvironment,
-			DialContext: dialCtx,
-
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: config.NoCheckCertificate,
-			},
-			DisableCompression: config.DisableCompression,
-			ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
-			MaxIdleConns:       10,
-			DisableKeepAlives:  config.DisableKeepAlive,
-			IdleConnTimeout:    config.Interval + config.Wait,
-		},
-	}
-
-	if webClient.config.DisableHTTP2 {
-		webClient.httpClient.Transport.(*http.Transport).TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
-	}
-
-	return &webClient, nil
 }
 
 func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
@@ -220,6 +130,12 @@ func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl,
 		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
 	}
 
+	var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
+
+	if webClient.config.DisableHTTP2 {
+		tlsNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	}
+
 	webClient.httpClient = &http.Client{
 		Timeout: webClient.config.Wait,
 		Transport: &http.Transport{
@@ -234,11 +150,8 @@ func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl,
 			MaxIdleConns:       10,
 			DisableKeepAlives:  config.DisableKeepAlive,
 			IdleConnTimeout:    config.Interval + config.Wait,
+			TLSNextProto:       tlsNextProto,
 		},
-	}
-
-	if webClient.config.DisableHTTP2 {
-		webClient.httpClient.Transport.(*http.Transport).TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
 	}
 
 	return &webClient, nil
@@ -406,7 +319,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		}
 	}
 
-	s, err := io.Copy(ioutil.Discard, res.Body)
+	s, err := io.Copy(io.Discard, res.Body)
 	if err != nil {
 		return &HTTPMeasure{
 			IsFailure:    true,
@@ -470,47 +383,4 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		Headers:      &res.Header,
 	}
 
-}
-
-func (webClientBuilder *webClientBuilderImpl) URL() string {
-	return webClientBuilder.url.String()
-}
-
-func (webClientBuilder *webClientBuilderImpl) SetURL(url *url.URL) {
-	webClientBuilder.url = url
-}
-
-func (webClientBuilder *webClientBuilderImpl) GetURL() *url.URL {
-	return webClientBuilder.url
-}
-
-func (webClientBuilder *webClientBuilderImpl) NewInstance() WebClient {
-	w, _ := newWebClient(webClientBuilder.config, webClientBuilder.runtimeConfig)
-
-	w.url = webClientBuilder.url
-	w.updateConnTarget()
-
-	return w
-}
-
-func (webClientBuilder *webClientBuilderImpl) updateConnTarget() {
-	if webClientBuilder.config.ConnTarget == "" {
-		webClientBuilder.resolver = newResolver(webClientBuilder.config)
-
-		webClientBuilder.connTarget = webClientBuilder.url.Hostname()
-		ipAddr := webClientBuilder.url.Hostname()
-
-		var port = webClientBuilder.url.Port()
-		if port == "" {
-			port = portMap[webClientBuilder.url.Scheme]
-		}
-
-		if strings.Contains(ipAddr, ":") {
-			webClientBuilder.connTarget = fmt.Sprintf("[%s]:%s", ipAddr, port)
-		} else {
-			webClientBuilder.connTarget = fmt.Sprintf("%s:%s", ipAddr, port)
-		}
-	} else {
-		webClientBuilder.connTarget = webClientBuilder.config.ConnTarget
-	}
 }
