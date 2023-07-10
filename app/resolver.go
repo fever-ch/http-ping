@@ -183,7 +183,7 @@ func (*resolver) fullResolveFromRoot(network, host string) (*string, error) {
 		qtypes = []string{}
 	}
 
-	r := dnsr.New(1024)
+	r := dnsr.NewResolver(dnsr.WithCache(1024))
 	requestCount := 0
 
 	var resolveRecu func(r *dnsr.Resolver, host string) (*string, error)

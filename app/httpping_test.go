@@ -18,7 +18,7 @@ package app
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 )
@@ -31,7 +31,7 @@ func TestHTTPPing(t *testing.T) {
 	instance.(*httpPingImpl).pinger = &PingerMock{}
 	_ = instance.Run()
 
-	out, _ := ioutil.ReadAll(b)
+	out, _ := io.ReadAll(b)
 
 	if !strings.Contains(string(out), "10 requests sent, 10 answers received, 0.0% loss") {
 		t.Fatal("Result didn't match expectations")
@@ -44,7 +44,7 @@ func TestHTTPPingVerbose(t *testing.T) {
 	instance.(*httpPingImpl).pinger = &PingerMock{}
 	_ = instance.Run()
 
-	out, _ := ioutil.ReadAll(b)
+	out, _ := io.ReadAll(b)
 
 	if !strings.Contains(string(out), "10 requests sent, 10 answers received, 0.0% loss") ||
 		!strings.Contains(string(out), "├─") {

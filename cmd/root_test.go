@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fever.ch/http-ping/app"
 	"io"
-	"io/ioutil"
 	"testing"
 )
 
@@ -54,7 +53,7 @@ func commandTest(_ *testing.T, args []string) (*app.Config, []byte, error) {
 		return nil, nil, err
 	}
 
-	out, err := ioutil.ReadAll(b)
+	out, err := io.ReadAll(b)
 
 	if err != nil {
 		return nil, nil, err

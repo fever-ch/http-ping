@@ -2,6 +2,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.2 h1:p1EgwI/C7NhT0JmVkwCD2ZBK8j4aeHQX2pMHH
 github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/domainr/dnsr v0.0.0-20230629082024-a8f6e526f98b h1:vgmYkbNgSRjiGt2JvdNZaWXChdTnf8k87IFvULiB+xg=
 github.com/domainr/dnsr v0.0.0-20230629082024-a8f6e526f98b/go.mod h1:caWUQ5wfjY/2rBM/hLhN9BPwJgDr7a0Lcw8+2YY4fW0=
+github.com/domainr/dnsr v0.0.0-20230710150025-adbf7e4e1548 h1:2/fIrpGMngKxMdLzTKgFvKZCgUqWFELIf4oOX4/X7ts=
+github.com/domainr/dnsr v0.0.0-20230710150025-adbf7e4e1548/go.mod h1:TmLfIRmAgicN7pdRf4G43dLce244kCsaE3Md1DmUwRg=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/miekg/dns v1.1.55 h1:GoQ4hpsj0nFLYe+bWiCToyrBEJXkQfOOIvFGFy0lEgo=
