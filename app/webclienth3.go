@@ -15,14 +15,3 @@
 // SPDX-License-Identifier: Apache-2.0
 
 package app
-
-import (
-	"net/url"
-)
-
-// WebClient represents an HTTP/S clientBuilder designed to do performance analysis
-type WebClient interface {
-	DoMeasure(followRedirect bool) *HTTPMeasure
-
-	GetURL() *url.URL
-}

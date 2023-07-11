@@ -17,12 +17,15 @@
 package app
 
 import (
-	"net/url"
+	"crypto/x509"
 )
 
-// WebClient represents an HTTP/S clientBuilder designed to do performance analysis
-type WebClient interface {
-	DoMeasure(followRedirect bool) *HTTPMeasure
+func init() {
+	// load system cert pool once at the beginning to not impact further measures
+	_, _ = x509.SystemCertPool()
+}
 
-	GetURL() *url.URL
+var portMap = map[string]string{
+	"http":  "80",
+	"https": "443",
 }
