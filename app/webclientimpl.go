@@ -68,7 +68,31 @@ func (webClient *webClientImpl) updateConnTarget() {
 	}
 }
 
-func newTransport(config *Config, runtimeConfig *RuntimeConfig) (http.RoundTripper, error) {
+func newTransport(config *Config, runtimeConfig *RuntimeConfig, r *resolver) (http.RoundTripper, error) {
+
+	if config.Http3 {
+		qconf := quic.Config{}
+
+		return &http3.RoundTripper{
+
+			DisableCompression: config.DisableCompression,
+			Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
+
+				connAddr, e := r.resolveConn(addr)
+				if e != nil {
+					return nil, e
+				}
+				runtimeConfig.ResolvedConnAddress = connAddr
+				return quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
+			},
+
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: config.NoCheckCertificate,
+			},
+			QuicConfig: &qconf,
+		}, nil
+	}
+
 	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
@@ -114,17 +138,6 @@ func newTransport(config *Config, runtimeConfig *RuntimeConfig) (http.RoundTripp
 		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
 	}
 
-	if config.Http3 {
-		var qconf quic.Config
-
-		return &http3.RoundTripper{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: config.NoCheckCertificate,
-			},
-			QuicConfig: &qconf,
-		}, nil
-	}
-
 	var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
 
 	if webClient.config.DisableHTTP2 {
@@ -157,71 +170,11 @@ func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl,
 
 	webClient.updateConnTarget()
 
-	//dialer := &net.Dialer{}
-	//
-	//startDNSHook := func(ctx context.Context) {
-	//	trace := httptrace.ContextClientTrace(ctx)
-	//	if trace != nil && trace.DNSStart != nil {
-	//		trace.DNSStart(httptrace.DNSStartInfo{})
-	//	}
-	//}
-	//
-	//stopDNSHook := func(ctx context.Context) {
-	//	trace := httptrace.ContextClientTrace(ctx)
-	//	if trace != nil && trace.DNSDone != nil {
-	//		trace.DNSDone(httptrace.DNSDoneInfo{})
-	//	}
-	//}
-
-	//dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
-	//	var ipaddr string
-	//
-	//	startDNSHook(ctx)
-	//
-	//	if webClient.config.ConnTarget == "" {
-	//		resolvedIpaddr, err := webClient.resolver.resolveConn(webClient.connTarget)
-	//
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		ipaddr = resolvedIpaddr
-	//	} else {
-	//		ipaddr = webClient.config.ConnTarget
-	//	}
-	//	stopDNSHook(ctx)
-	//
-	//	return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
-	//}
-	//
-	//if config.Http3 {
-	//	os.Exit(0)
-	//}
-
-	//var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
-	//
-	//if webClient.config.DisableHTTP2 {
-	//	tlsNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
-	//}
-
-	tr, _ := newTransport(config, runtimeConfig)
+	tr, _ := newTransport(config, runtimeConfig, webClient.resolver)
 
 	webClient.httpClient = &http.Client{
 		Timeout:   webClient.config.Wait,
 		Transport: tr,
-		//Transport: &http.Transport{
-		//	Proxy:       http.ProxyFromEnvironment,
-		//	DialContext: dialCtx,
-		//
-		//	TLSClientConfig: &tls.Config{
-		//		InsecureSkipVerify: config.NoCheckCertificate,
-		//	},
-		//	DisableCompression: config.DisableCompression,
-		//	ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
-		//	MaxIdleConns:       10,
-		//	DisableKeepAlives:  config.DisableKeepAlive,
-		//	IdleConnTimeout:    config.Interval + config.Wait,
-		//	TLSNextProto:       tlsNextProto,
-		//},
 	}
 
 	return &webClient, nil
@@ -380,6 +333,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	webClient.prepareReq(req)
 
 	totalTimer.start()
+
 	res, err := webClient.httpClient.Do(req)
 
 	if err != nil {
@@ -424,6 +378,10 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		} else {
 			tlsVersion = "SSL-3"
 		}
+	}
+
+	if remoteAddr == "" {
+		remoteAddr = webClient.runtimeConfig.ResolvedConnAddress
 	}
 
 	return &HTTPMeasure{
