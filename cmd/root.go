@@ -286,6 +286,8 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().BoolVarP(&config.DisableHTTP2, "disable-http2", "", false, "disable the HTTP/2 protocol")
 
+	rootCmd.Flags().BoolVarP(&config.Http3, "use-http3", "", false, "Use the HTTP/3 protocol")
+
 	rootCmd.Flags().BoolVarP(&config.FullDNS, "dns-full-resolution", "D", false, "enable full DNS resolution from the root servers")
 
 	rootCmd.Flags().StringVarP(&config.DNSServer, "dns-server", "d", "", "specify an alternate DNS server for resolutions")

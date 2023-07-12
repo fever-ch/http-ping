@@ -58,6 +58,7 @@ type Config struct {
 	AuthUsername       string
 	AuthPassword       string
 	DisableHTTP2       bool
+	Http3              bool
 	FullDNS            bool
 	DNSServer          string
 	CacheDNSRequests   bool

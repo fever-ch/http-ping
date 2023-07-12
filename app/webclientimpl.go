@@ -21,6 +21,8 @@ import (
 	"crypto/tls"
 	"fever.ch/http-ping/net/sockettrace"
 	"fmt"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 	"io"
 	"net"
 	"net/http"
@@ -66,7 +68,7 @@ func (webClient *webClientImpl) updateConnTarget() {
 	}
 }
 
-func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
+func newTransport(config *Config, runtimeConfig *RuntimeConfig) (http.RoundTripper, error) {
 	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
@@ -112,28 +114,114 @@ func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl,
 		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
 	}
 
+	if config.Http3 {
+		var qconf quic.Config
+
+		return &http3.RoundTripper{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: config.NoCheckCertificate,
+			},
+			QuicConfig: &qconf,
+		}, nil
+	}
+
 	var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
 
 	if webClient.config.DisableHTTP2 {
 		tlsNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
 	}
 
-	webClient.httpClient = &http.Client{
-		Timeout: webClient.config.Wait,
-		Transport: &http.Transport{
-			Proxy:       http.ProxyFromEnvironment,
-			DialContext: dialCtx,
+	return &http.Transport{
+		Proxy:       http.ProxyFromEnvironment,
+		DialContext: dialCtx,
 
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: config.NoCheckCertificate,
-			},
-			DisableCompression: config.DisableCompression,
-			ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
-			MaxIdleConns:       10,
-			DisableKeepAlives:  config.DisableKeepAlive,
-			IdleConnTimeout:    config.Interval + config.Wait,
-			TLSNextProto:       tlsNextProto,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: config.NoCheckCertificate,
 		},
+		DisableCompression: config.DisableCompression,
+		ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
+		MaxIdleConns:       10,
+		DisableKeepAlives:  config.DisableKeepAlive,
+		IdleConnTimeout:    config.Interval + config.Wait,
+		TLSNextProto:       tlsNextProto,
+	}, nil
+}
+
+func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
+	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
+	parsedURL, err := url.Parse(config.Target)
+	if err != nil {
+		return nil, err
+	}
+	webClient.url = parsedURL
+
+	webClient.updateConnTarget()
+
+	//dialer := &net.Dialer{}
+	//
+	//startDNSHook := func(ctx context.Context) {
+	//	trace := httptrace.ContextClientTrace(ctx)
+	//	if trace != nil && trace.DNSStart != nil {
+	//		trace.DNSStart(httptrace.DNSStartInfo{})
+	//	}
+	//}
+	//
+	//stopDNSHook := func(ctx context.Context) {
+	//	trace := httptrace.ContextClientTrace(ctx)
+	//	if trace != nil && trace.DNSDone != nil {
+	//		trace.DNSDone(httptrace.DNSDoneInfo{})
+	//	}
+	//}
+
+	//dialCtx := func(ctx context.Context, network, addr string) (net.Conn, error) {
+	//	var ipaddr string
+	//
+	//	startDNSHook(ctx)
+	//
+	//	if webClient.config.ConnTarget == "" {
+	//		resolvedIpaddr, err := webClient.resolver.resolveConn(webClient.connTarget)
+	//
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		ipaddr = resolvedIpaddr
+	//	} else {
+	//		ipaddr = webClient.config.ConnTarget
+	//	}
+	//	stopDNSHook(ctx)
+	//
+	//	return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
+	//}
+	//
+	//if config.Http3 {
+	//	os.Exit(0)
+	//}
+
+	//var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
+	//
+	//if webClient.config.DisableHTTP2 {
+	//	tlsNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	//}
+
+	tr, _ := newTransport(config, runtimeConfig)
+
+	webClient.httpClient = &http.Client{
+		Timeout:   webClient.config.Wait,
+		Transport: tr,
+		//Transport: &http.Transport{
+		//	Proxy:       http.ProxyFromEnvironment,
+		//	DialContext: dialCtx,
+		//
+		//	TLSClientConfig: &tls.Config{
+		//		InsecureSkipVerify: config.NoCheckCertificate,
+		//	},
+		//	DisableCompression: config.DisableCompression,
+		//	ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
+		//	MaxIdleConns:       10,
+		//	DisableKeepAlives:  config.DisableKeepAlive,
+		//	IdleConnTimeout:    config.Interval + config.Wait,
+		//	TLSNextProto:       tlsNextProto,
+		//},
 	}
 
 	return &webClient, nil
