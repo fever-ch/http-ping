@@ -22,6 +22,7 @@ import (
 )
 
 func main() {
+	_ = os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "1")
 	cmd.Execute()
 	os.Exit(0)
 }
