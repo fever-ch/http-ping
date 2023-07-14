@@ -68,7 +68,7 @@ func (webClient *webClientImpl) updateConnTarget() {
 	}
 }
 
-func newTransport(config *Config, runtimeConfig *RuntimeConfig, r *resolver) (http.RoundTripper, error) {
+func newTransport(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 
 	if config.Http3 {
 		qconf := quic.Config{}
@@ -78,12 +78,14 @@ func newTransport(config *Config, runtimeConfig *RuntimeConfig, r *resolver) (ht
 			DisableCompression: config.DisableCompression,
 			Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
 
-				connAddr, e := r.resolveConn(addr)
+				connAddr, e := w.resolver.resolveConn(addr)
 				if e != nil {
 					return nil, e
 				}
 				runtimeConfig.ResolvedConnAddress = connAddr
-				return quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
+				dae, err := quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
+
+				return wrapEarlyConnection(dae, w), err
 			},
 
 			TLSClientConfig: &tls.Config{
@@ -161,7 +163,7 @@ func newTransport(config *Config, runtimeConfig *RuntimeConfig, r *resolver) (ht
 }
 
 func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
-	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
+	webClient := &webClientImpl{config: config, runtimeConfig: runtimeConfig}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
 		return nil, err
@@ -170,14 +172,14 @@ func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl,
 
 	webClient.updateConnTarget()
 
-	tr, _ := newTransport(config, runtimeConfig, webClient.resolver)
+	tr, _ := newTransport(config, runtimeConfig, webClient)
 
 	webClient.httpClient = &http.Client{
 		Timeout:   webClient.config.Wait,
 		Transport: tr,
 	}
 
-	return &webClient, nil
+	return webClient, nil
 }
 
 func (webClient *webClientImpl) URL() string {
