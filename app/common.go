@@ -14,15 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package main
+package app
 
 import (
-	"fever.ch/http-ping/cmd"
-	"os"
+	"crypto/x509"
 )
 
-func main() {
-	_ = os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "1")
-	cmd.Execute()
-	os.Exit(0)
+func init() {
+	// load system cert pool once at the beginning to not impact further measures
+	_, _ = x509.SystemCertPool()
+}
+
+var portMap = map[string]string{
+	"http":  "80",
+	"https": "443",
 }

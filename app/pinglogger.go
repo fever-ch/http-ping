@@ -128,8 +128,7 @@ func (logger *standardLogger) onMeasure(measure *HTTPMeasure) {
 		_, _ = fmt.Fprintf(logger.stdout, "%4d: Error: %s\n", logger.measures.attempts, measure.FailureCause)
 		return
 	}
-	_, _ = fmt.Fprintf(logger.stdout, "%8d: %s, code=%d, size=%d bytes, time=%.1f ms\n", logger.measures.attempts, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.TotalTime.ToFloat(time.Millisecond))
-
+	_, _ = fmt.Fprintf(logger.stdout, "%8d: %s, %s, code=%d, size=%d bytes, time=%.1f ms\n", logger.measures.attempts, measure.Proto, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.TotalTime.ToFloat(time.Millisecond))
 }
 
 func (logger *standardLogger) onTick(m throughputMeasure) {
