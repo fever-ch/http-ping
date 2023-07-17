@@ -65,7 +65,7 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 				if m != nil && strings.HasPrefix(m.Proto, prefix) && !m.IsFailure {
 					r <- "\u001B[32m✓\u001B[0m " + m.Proto
 				}
-				r <- "\u001B[31m✗\u001B[0m"
+				r <- "\u001B[31m✗\u001B[0m not available"
 			}()
 
 			return r
