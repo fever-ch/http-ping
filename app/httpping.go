@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 )
 
@@ -43,6 +44,51 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 		RedirectCallBack: func(url string) {
 			_, _ = fmt.Fprintf(stdout, "   ─→     Redirected to %s\n\n", url)
 		},
+	}
+
+	if config.TestVersion {
+
+		checkHttp := func(prep func(*Config), prefix string) <-chan string {
+			r := make(chan string)
+
+			go func() {
+				configCopy := *config
+
+				configCopy.DisableHTTP2 = false
+				configCopy.Http3 = false
+				prep(&configCopy)
+
+				rc := RuntimeConfig{}
+				wc, _ := newWebClient(&configCopy, &rc)
+				m := wc.DoMeasure(false)
+
+				if m != nil && strings.HasPrefix(m.Proto, prefix) && !m.IsFailure {
+					r <- "\u001B[32m✓\u001B[0m " + m.Proto
+				}
+				r <- "\u001B[31m✗\u001B[0m"
+			}()
+
+			return r
+		}
+
+		http1 := checkHttp(func(c *Config) {
+			c.DisableHTTP2 = true
+		}, "HTTP/1")
+
+		http2 := checkHttp(func(c *Config) {
+		}, "HTTP/2")
+
+		http3 := checkHttp(func(c *Config) {
+			c.Http3 = true
+		}, "HTTP/3")
+		println("Checking available versions of HTTP protocol on " + config.Target)
+		println()
+		println(" - v1 " + <-http1)
+		println(" - v2 " + <-http2)
+		println(" - v3 " + <-http3)
+		println()
+
+		os.Exit(0)
 	}
 
 	pinger, err := NewPinger(config, runtimeConfig)
