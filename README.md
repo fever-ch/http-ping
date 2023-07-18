@@ -34,7 +34,7 @@ Usage:
   http-ping [flags] target-URL
 
 Flags:
-  -a, --audible-bell                  audible ; include a bell (ASCII 0x07) character in the output when any successful answer is received
+  -a, --audible-bell                  audible ; include a bell (ASCII 0x07) character in the outhroughput when any successful answer is received
       --auth-password string          authentication password
       --auth-username string          authentication username
       --conn-target string            force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)
@@ -51,6 +51,7 @@ Flags:
   -H, --head                          perform HTTP HEAD requests instead of GETs
       --header stringArray            add one or more header, in the form name=value
   -h, --help                          help for http-ping
+      --http-versions                 detect HTTP protocol versions available on target
   -k, --insecure                      allow insecure server connections when using SSL
   -i, --interval duration             define the wait time between each request (default 1s)
   -4, --ipv4                          force IPv4 resolution for dual-stacked sites
@@ -63,6 +64,7 @@ Flags:
       --referrer string               define the referrer
   -t, --throughput                    log the number of requests done per second
   -T, --throughput-refresh duration   sampling time for measuring throughput (default 5s)
+      --use-http3                     use the HTTP/3 protocol
       --user-agent string             define a custom user-agent (default "Http-Ping/(devel) (https://github.com/fever-ch/http-ping)")
   -v, --verbose                       print more details
       --version                       version for http-ping
@@ -76,14 +78,14 @@ Measure the latency with the Google Cloud Zurich region with 4 HTTP pings (`-c 4
 $ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 4
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping GET
 
-       0: 216.239.36.53:443, code=200, size=13 bytes, time=17.9 ms
-       1: 216.239.36.53:443, code=200, size=13 bytes, time=16.7 ms
-       2: 216.239.36.53:443, code=200, size=13 bytes, time=16.4 ms
-       3: 216.239.36.53:443, code=200, size=13 bytes, time=17.6 ms
+       1: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=18.5 ms
+       2: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=18.4 ms
+       3: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=17.1 ms
+       4: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=17.5 ms
 
 --- https://europe-west6-5tkroniexa-oa.a.run.app/api/ping ping statistics ---
 4 requests sent, 4 answers received, 0.0% loss
-round-trip min/avg/max/stddev = 16.401/17.144/17.915/0.625 ms
+round-trip min/avg/max/stddev = 17.079/17.862/18.546/0.614 ms
 ```
 
 Measure the latency with Google Cloud Zurich region with ten HTTP pings (`-c 10`), disabling socket reuse (`-K`), using a HEAD request (`-H`), and in verbose mode (`-v`):
@@ -91,7 +93,7 @@ Measure the latency with Google Cloud Zurich region with ten HTTP pings (`-c 10`
 $ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 10 -K -H -v
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping HEAD
 
-       0: 216.239.36.53:443, code=200, size=0 bytes, time=59.7 ms
+       0: HTTP/2.0, 216.239.36.53:443, code=200, size=0 bytes, time=59.7 ms
           proto=HTTP/2.0, socket reused=false, compressed=true
           network i/o: bytes read=4713, bytes written=669
           tls version=TLS-1.3
@@ -108,7 +110,7 @@ HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping HEAD
 
        ...
 
-       9: 216.239.36.53:443, code=200, size=0 bytes, time=53.5 ms
+       9: HTTP/2.0, 216.239.36.53:443, code=200, size=0 bytes, time=53.5 ms
           proto=HTTP/2.0, socket reused=false, compressed=true
           network i/o: bytes read=4713, bytes written=669
           tls version=TLS-1.3
