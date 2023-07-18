@@ -67,6 +67,7 @@ type Config struct {
 	Workers            int
 	Throughput         bool
 	ThroughputRefresh  time.Duration
+	TestVersion        bool
 }
 
 // RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClientBuilder

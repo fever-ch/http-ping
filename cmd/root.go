@@ -286,7 +286,7 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().BoolVarP(&config.DisableHTTP2, "disable-http2", "", false, "disable the HTTP/2 protocol")
 
-	rootCmd.Flags().BoolVarP(&config.Http3, "use-http3", "", false, "Use the HTTP/3 protocol")
+	rootCmd.Flags().BoolVarP(&config.Http3, "use-http3", "", false, "use the HTTP/3 protocol")
 
 	rootCmd.Flags().BoolVarP(&config.FullDNS, "dns-full-resolution", "D", false, "enable full DNS resolution from the root servers")
 
@@ -303,6 +303,8 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 	rootCmd.Flags().BoolVarP(&config.Throughput, "throughput", "t", false, "log the number of requests done per second")
 
 	rootCmd.Flags().DurationVarP(&config.ThroughputRefresh, "throughput-refresh", "T", 5*time.Second, "sampling time for measuring throughput")
+
+	rootCmd.Flags().BoolVarP(&config.TestVersion, "http-versions", "", false, "detect HTTP protocol versions available on target")
 
 	return rootCmd
 }
