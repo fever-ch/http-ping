@@ -21,8 +21,6 @@ import (
 	"crypto/tls"
 	"fever.ch/http-ping/net/sockettrace"
 	"fmt"
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/http3"
 	"io"
 	"net"
 	"net/http"
@@ -68,32 +66,7 @@ func (webClient *webClientImpl) updateConnTarget() {
 	}
 }
 
-func newTransport(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
-
-	if config.Http3 {
-		qconf := quic.Config{}
-
-		return &http3.RoundTripper{
-
-			DisableCompression: config.DisableCompression,
-			Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
-
-				connAddr, e := w.resolver.resolveConn(addr)
-				if e != nil {
-					return nil, e
-				}
-				runtimeConfig.ResolvedConnAddress = connAddr
-				dae, err := quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
-
-				return wrapEarlyConnection(dae, w), err
-			},
-
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: config.NoCheckCertificate,
-			},
-			QuicConfig: &qconf,
-		}, nil
-	}
+func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 
 	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
 	parsedURL, err := url.Parse(config.Target)
@@ -160,6 +133,14 @@ func newTransport(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl
 		IdleConnTimeout:    config.Interval + config.Wait,
 		TLSNextProto:       tlsNextProto,
 	}, nil
+}
+
+func newTransport(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
+
+	if config.Http3 {
+		return newHttp3RoundTripper(config, runtimeConfig, w)
+	}
+	return newHttp2RoundTripper(config, runtimeConfig, w)
 }
 
 func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
@@ -338,6 +319,12 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	res, err := webClient.httpClient.Do(req)
 
+	altSvcH3 := ""
+	if res != nil {
+		if val := CheckAltSvcH3Header(res.Header); val != nil {
+			altSvcH3 = *val
+		}
+	}
 	if err != nil {
 		return &HTTPMeasure{
 			IsFailure:    true,
@@ -397,6 +384,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		Compressed:   !res.Uncompressed,
 		TLSEnabled:   res.TLS != nil,
 		TLSVersion:   tlsVersion,
+		AltSvcH3:     altSvcH3,
 
 		DNSResolution:     dnsTimer.measure(),
 		TCPHandshake:      tcpTimer.measure(),

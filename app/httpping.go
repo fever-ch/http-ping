@@ -47,8 +47,8 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 	}
 
 	if config.TestVersion {
-
-		checkHttp := func(prep func(*Config), prefix string) <-chan string {
+		advertisedHttp3 := false
+		checkHttp := func(prep func(*Config), prefix string) <-chan (string) {
 			r := make(chan string)
 
 			go func() {
@@ -62,8 +62,15 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 				wc, _ := newWebClient(&configCopy, &rc)
 				m := wc.DoMeasure(false)
 
+				http3Advertisement := ""
+
 				if m != nil && strings.HasPrefix(m.Proto, prefix) && !m.IsFailure {
-					r <- "\u001B[32m✓\u001B[0m " + m.Proto
+					if m.AltSvcH3 != "" {
+						advertisedHttp3 = true
+						http3Advertisement = " (*)"
+					}
+
+					r <- "\u001B[32m✓\u001B[0m " + m.Proto + http3Advertisement
 				}
 				r <- "\u001B[31m✗\u001B[0m not available"
 			}()
@@ -83,10 +90,13 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 		}, "HTTP/3")
 		println("Checking available versions of HTTP protocol on " + config.Target)
 		println()
-		println(" - v1 " + <-http1)
-		println(" - v2 " + <-http2)
-		println(" - v3 " + <-http3)
+		println(" - v1  " + <-http1)
+		println(" - v2  " + <-http2)
+		println(" - v3  " + <-http3)
 		println()
+		if advertisedHttp3 {
+			println("   (*) advertises HTTP/3 availability in HTTP headers")
+		}
 
 		os.Exit(0)
 	}
