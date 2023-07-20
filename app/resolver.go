@@ -102,16 +102,13 @@ func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, 
 		go ret(dns.TypeAAAA)
 
 		for i := 0; i < 2; i++ {
-			if answer := <-answersChan; answer.err == nil {
+			if answer := <-answersChan; answer.err == nil && len(answer.ip) > 0 {
 
-				if len(answer.ip) > 0 {
-					if answer.qtype == dns.TypeA {
-						return answer.ip, nil
-					}
-
-					ipv6Address = append(ipv6Address, answer.ip...)
+				if answer.qtype == dns.TypeA {
+					return answer.ip, nil
 				}
 
+				ipv6Address = append(ipv6Address, answer.ip...)
 			}
 
 		}
