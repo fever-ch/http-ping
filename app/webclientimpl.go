@@ -144,10 +144,23 @@ func newTransport(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl
 }
 
 func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
-	webClient := &webClientImpl{config: config, runtimeConfig: runtimeConfig}
-	parsedURL, err := url.Parse(config.Target)
+	webClient := &webClientImpl{}
+
+	err := webClient.update(config, runtimeConfig)
+
 	if err != nil {
 		return nil, err
+	}
+
+	return webClient, nil
+}
+
+func (webClient *webClientImpl) update(config *Config, runtimeConfig *RuntimeConfig) error {
+	webClient.config = config
+	webClient.runtimeConfig = runtimeConfig
+	parsedURL, err := url.Parse(config.Target)
+	if err != nil {
+		return err
 	}
 	webClient.url = parsedURL
 
@@ -160,7 +173,7 @@ func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl,
 		Transport: tr,
 	}
 
-	return webClient, nil
+	return nil
 }
 
 func (webClient *webClientImpl) URL() string {
@@ -319,17 +332,34 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	res, err := webClient.httpClient.Do(req)
 
+	if err != nil {
+		return &HTTPMeasure{
+			IsFailure:    true,
+			FailureCause: err.Error(),
+		}
+	}
+
 	altSvcH3 := ""
 	if res != nil {
 		if val := CheckAltSvcH3Header(res.Header); val != nil {
 			altSvcH3 = *val
 		}
 	}
-	if err != nil {
-		return &HTTPMeasure{
-			IsFailure:    true,
-			FailureCause: err.Error(),
+
+	if altSvcH3 != "" && !strings.HasPrefix(res.Proto, "HTTP/3") {
+		_, _ = fmt.Printf("   ─→     Advertised HTTP/3 endpoint, using HTTP/3\n\n")
+
+		c := &(*webClient.config)
+		c.Http3 = true
+		err := webClient.update(c, webClient.runtimeConfig)
+
+		if err != nil {
+			return &HTTPMeasure{
+				IsFailure:    true,
+				FailureCause: err.Error(),
+			}
 		}
+		return webClient.DoMeasure(followRedirect)
 	}
 
 	s, err := io.Copy(io.Discard, res.Body)
