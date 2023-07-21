@@ -41,7 +41,6 @@ Flags:
       --cookie stringArray            add one or more cookies, in the form name=value
   -c, --count int                     define the number of request to be sent (default unlimited)
       --disable-compression           the client will not request the remote server to compress answers (hence it might actually do it)
-      --disable-http2                 disable the HTTP/2 protocol
   -K, --disable-keepalive             disable keep-alive feature
       --dns-cache                     cache DNS requests
   -D, --dns-full-resolution           enable full DNS resolution from the root servers
@@ -52,6 +51,9 @@ Flags:
       --header stringArray            add one or more header, in the form name=value
   -h, --help                          help for http-ping
       --http-versions                 detect HTTP protocol versions available on target
+  -1, --http1                         use the HTTP/1 protocol
+  -2, --http2                         use the HTTP/2 protocol
+  -3, --http3                         use the HTTP/3 protocol
   -k, --insecure                      allow insecure server connections when using SSL
   -i, --interval duration             define the wait time between each request (default 1s)
   -4, --ipv4                          force IPv4 resolution for dual-stacked sites
@@ -64,7 +66,6 @@ Flags:
       --referrer string               define the referrer
   -t, --throughput                    log the number of requests done per second
   -T, --throughput-refresh duration   sampling time for measuring throughput (default 5s)
-      --use-http3                     use the HTTP/3 protocol
       --user-agent string             define a custom user-agent (default "Http-Ping/(devel) (https://github.com/fever-ch/http-ping)")
   -v, --verbose                       print more details
       --version                       version for http-ping
@@ -78,19 +79,21 @@ Measure the latency with the Google Cloud Zurich region with 4 HTTP pings (`-c 4
 $ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 4
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping GET
 
-       1: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=18.5 ms
-       2: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=18.4 ms
-       3: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=17.1 ms
-       4: HTTP/2.0, 216.239.32.53:443, code=200, size=13 bytes, time=17.5 ms
+   ─→     server advertised HTTP/3 endpoint, using HTTP/3
+
+       1: HTTP/3.0, 216.239.32.53:443, code=200, size=13 bytes, time=28.4 ms
+       2: HTTP/3.0, 216.239.32.53:443, code=200, size=13 bytes, time=28.9 ms
+       3: HTTP/3.0, 216.239.32.53:443, code=200, size=13 bytes, time=29.5 ms
+       4: HTTP/3.0, 216.239.32.53:443, code=200, size=13 bytes, time=29.5 ms
 
 --- https://europe-west6-5tkroniexa-oa.a.run.app/api/ping ping statistics ---
 4 requests sent, 4 answers received, 0.0% loss
-round-trip min/avg/max/stddev = 17.079/17.862/18.546/0.614 ms
+round-trip min/avg/max/stddev = 28.444/29.094/29.538/0.456 ms
 ```
 
 Measure the latency with Google Cloud Zurich region with ten HTTP pings (`-c 10`), disabling socket reuse (`-K`), using a HEAD request (`-H`), and in verbose mode (`-v`):
 ```
-$ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 10 -K -H -v
+$ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 10 -K -H --http2 -v
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping HEAD
 
        0: HTTP/2.0, 216.239.36.53:443, code=200, size=0 bytes, time=59.7 ms
@@ -186,7 +189,7 @@ $ brew install fever-ch/tap/http-ping
 
 ## Install on Linux/FreeBSD/MacOS/Windows
 
-The [releases](https://github.com/fever-ch/http-ping/releases) are also containing archives which contain the executable file, `tar.gz` files for Linux/FreeBSD/MacOS and `zip` files for Windows.
+The [releases](https://github.com/fever-ch/http-ping/releases) page also provides archives that contain the binary executable file, `tar.gz` files for Linux/FreeBSD/MacOS and `zip` files for Windows.
 
 ## Use with Docker
 ```
