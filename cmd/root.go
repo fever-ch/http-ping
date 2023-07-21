@@ -284,8 +284,6 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().StringVarP(&config.AuthPassword, "auth-password", "", "", "authentication password")
 
-	//rootCmd.Flags().BoolVarP(&config.Http1, "disable-http2", "", false, "disable the HTTP/2 protocol")
-
 	rootCmd.Flags().BoolVarP(&config.Http1, "http1", "1", false, "use the HTTP/1 protocol")
 
 	rootCmd.Flags().BoolVarP(&config.Http2, "http2", "2", false, "use the HTTP/2 protocol")
