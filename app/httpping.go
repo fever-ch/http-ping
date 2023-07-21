@@ -42,13 +42,15 @@ type httpPingTestVersion struct {
 	advertisedHttp3 bool
 }
 
-func (h httpPingTestVersion) Run() error {
+func (h *httpPingTestVersion) Run() error {
 	http1 := h.checkHttp(func(c *Config) {
-		c.DisableHTTP2 = true
+		//c.DisableHTTP2 = true
+		c.Http1 = true
 	}, "HTTP/1")
 
 	http2 := h.checkHttp(func(c *Config) {
 		// default is HTTP/2
+		c.Http2 = true
 	}, "HTTP/2")
 
 	http3 := h.checkHttp(func(c *Config) {
@@ -66,13 +68,13 @@ func (h httpPingTestVersion) Run() error {
 	return nil
 }
 
-func (h httpPingTestVersion) checkHttp(prep func(*Config), prefix string) <-chan string {
+func (h *httpPingTestVersion) checkHttp(prep func(*Config), prefix string) <-chan string {
 	r := make(chan string)
 
 	go func() {
 		configCopy := *h.baseConfig
 
-		configCopy.DisableHTTP2 = false
+		//configCopy.DisableHTTP2 = false
 		configCopy.Http3 = false
 		prep(&configCopy)
 
@@ -100,14 +102,14 @@ func (h httpPingTestVersion) checkHttp(prep func(*Config), prefix string) <-chan
 func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 
 	if config.TestVersion {
-		return httpPingTestVersion{
+		return &httpPingTestVersion{
 			baseConfig: config,
 		}, nil
 	}
 
 	runtimeConfig := &RuntimeConfig{
 		RedirectCallBack: func(url string) {
-			_, _ = fmt.Fprintf(stdout, "   ─→     Redirected to %s\n\n", url)
+			_, _ = fmt.Fprintf(stdout, "   ─→     redirected to %s\n", url)
 		},
 	}
 
@@ -156,6 +158,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 	throughputMeasurer := newThroughputMeasurer()
 
 	loop := true
+	first := true
 	for loop {
 		select {
 
@@ -167,6 +170,11 @@ func (httpPingImpl *httpPingImpl) Run() error {
 			if measure == nil {
 				loop = false
 			} else {
+				if first {
+					println()
+					first = false
+				}
+
 				httpPingImpl.logger.onMeasure(measure)
 				if !measure.IsFailure {
 					if config.Throughput && !tpuStarted {
