@@ -284,9 +284,13 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().StringVarP(&config.AuthPassword, "auth-password", "", "", "authentication password")
 
-	rootCmd.Flags().BoolVarP(&config.DisableHTTP2, "disable-http2", "", false, "disable the HTTP/2 protocol")
+	//rootCmd.Flags().BoolVarP(&config.Http1, "disable-http2", "", false, "disable the HTTP/2 protocol")
 
-	rootCmd.Flags().BoolVarP(&config.Http3, "use-http3", "", false, "use the HTTP/3 protocol")
+	rootCmd.Flags().BoolVarP(&config.Http1, "http1", "1", false, "use the HTTP/1 protocol")
+
+	rootCmd.Flags().BoolVarP(&config.Http2, "http2", "2", false, "use the HTTP/2 protocol")
+
+	rootCmd.Flags().BoolVarP(&config.Http3, "http3", "3", false, "use the HTTP/3 protocol")
 
 	rootCmd.Flags().BoolVarP(&config.FullDNS, "dns-full-resolution", "D", false, "enable full DNS resolution from the root servers")
 

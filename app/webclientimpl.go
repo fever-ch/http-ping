@@ -115,7 +115,7 @@ func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 
 	var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
 
-	if webClient.config.DisableHTTP2 {
+	if webClient.config.Http1 {
 		tlsNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
 	}
 
@@ -127,7 +127,7 @@ func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 			InsecureSkipVerify: config.NoCheckCertificate,
 		},
 		DisableCompression: config.DisableCompression,
-		ForceAttemptHTTP2:  !webClient.config.DisableHTTP2,
+		ForceAttemptHTTP2:  !webClient.config.Http1,
 		MaxIdleConns:       10,
 		DisableKeepAlives:  config.DisableKeepAlive,
 		IdleConnTimeout:    config.Interval + config.Wait,
@@ -346,8 +346,16 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		}
 	}
 
-	if altSvcH3 != "" && !strings.HasPrefix(res.Proto, "HTTP/3") {
-		_, _ = fmt.Printf("   ─→     Advertised HTTP/3 endpoint, using HTTP/3\n\n")
+	if altSvcH3 != "" && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.Http1 && !webClient.config.Http2 {
+		_, _ = fmt.Printf("   ─→     server advertised HTTP/3 endpoint, using HTTP/3\n")
+
+		if altSvcH3 == ":443" {
+			// nothing
+		} else if strings.HasPrefix(altSvcH3, ":") {
+			webClient.url.Host = webClient.url.Host + altSvcH3
+		} else {
+			webClient.url.Host = altSvcH3
+		}
 
 		c := &(*webClient.config)
 		c.Http3 = true
@@ -384,6 +392,11 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	if res.StatusCode/100 == 5 && !webClient.config.IgnoreServerErrors {
 		failed = true
 		failureCause = "Server-side error"
+	}
+
+	if strings.HasPrefix(res.Proto, "HTTP/1.") && webClient.config.Http2 {
+		failed = true
+		failureCause = "HTTP/2 not supported by server"
 	}
 
 	i := atomic.SwapInt64(&webClient.reads, 0)

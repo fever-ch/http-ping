@@ -57,17 +57,19 @@ type Config struct {
 	Referrer           string
 	AuthUsername       string
 	AuthPassword       string
-	DisableHTTP2       bool
-	Http3              bool
-	FullDNS            bool
-	DNSServer          string
-	CacheDNSRequests   bool
-	KeepCookies        bool
-	FollowRedirects    bool
-	Workers            int
-	Throughput         bool
-	ThroughputRefresh  time.Duration
-	TestVersion        bool
+	//DisableHTTP2       bool
+	Http1             bool
+	Http2             bool
+	Http3             bool
+	FullDNS           bool
+	DNSServer         string
+	CacheDNSRequests  bool
+	KeepCookies       bool
+	FollowRedirects   bool
+	Workers           int
+	Throughput        bool
+	ThroughputRefresh time.Duration
+	TestVersion       bool
 }
 
 // RuntimeConfig defines the parameters which can be passed to NewPinger and NewWebClientBuilder
