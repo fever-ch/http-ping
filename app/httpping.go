@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 )
 
@@ -44,18 +43,17 @@ type httpPingTestVersion struct {
 
 func (h *httpPingTestVersion) Run() error {
 	http1 := h.checkHttp(func(c *Config) {
-		//c.DisableHTTP2 = true
 		c.Http1 = true
-	}, "HTTP/1")
+	})
 
 	http2 := h.checkHttp(func(c *Config) {
-		// default is HTTP/2
 		c.Http2 = true
-	}, "HTTP/2")
+	})
 
 	http3 := h.checkHttp(func(c *Config) {
 		c.Http3 = true
-	}, "HTTP/3")
+	})
+
 	println("Checking available versions of HTTP protocol on " + h.baseConfig.Target)
 	println()
 	println(" - v1  " + <-http1)
@@ -68,13 +66,12 @@ func (h *httpPingTestVersion) Run() error {
 	return nil
 }
 
-func (h *httpPingTestVersion) checkHttp(prep func(*Config), prefix string) <-chan string {
+func (h *httpPingTestVersion) checkHttp(prep func(*Config)) <-chan string {
 	r := make(chan string)
 
 	go func() {
 		configCopy := *h.baseConfig
 
-		//configCopy.DisableHTTP2 = false
 		configCopy.Http3 = false
 		prep(&configCopy)
 
@@ -84,7 +81,7 @@ func (h *httpPingTestVersion) checkHttp(prep func(*Config), prefix string) <-cha
 
 		http3Advertisement := ""
 
-		if m != nil && strings.HasPrefix(m.Proto, prefix) && !m.IsFailure {
+		if m != nil && !m.IsFailure {
 			if m.AltSvcH3 != "" {
 				h.advertisedHttp3 = true
 				http3Advertisement = " (*)"
