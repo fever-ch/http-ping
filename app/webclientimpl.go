@@ -357,9 +357,9 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 			webClient.url.Host = altSvcH3
 		}
 
-		c := &(*webClient.config)
+		c := *webClient.config
 		c.Http3 = true
-		err := webClient.update(c, webClient.runtimeConfig)
+		err := webClient.update(&c, webClient.runtimeConfig)
 
 		if err != nil {
 			return &HTTPMeasure{
