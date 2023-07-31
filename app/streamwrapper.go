@@ -89,7 +89,6 @@ func (earlyConnectionWrapper *earlyConnectionWrapper) SendMessage(bytes []byte) 
 }
 
 func (earlyConnectionWrapper *earlyConnectionWrapper) ReceiveMessage() ([]byte, error) {
-
 	return earlyConnectionWrapper.ec.ReceiveMessage()
 
 }

@@ -74,3 +74,31 @@ func (m Measure) ToFloat(unit time.Duration) float64 {
 	}
 	return float64(time.Duration(m).Nanoseconds()) / float64(unit)
 }
+
+func NewMeasureRegistry() *MeasureRegistry {
+	return &MeasureRegistry{
+		timers: make(map[TimerType]Measure),
+	}
+}
+
+type MeasureRegistry struct {
+	timers map[TimerType]Measure
+}
+
+func (mr *MeasureRegistry) Append(other *MeasureRegistry) {
+
+}
+
+func (mr *MeasureRegistry) Divide(successes int64) {
+
+}
+
+func (mr *MeasureRegistry) Get(tt TimerType) Measure {
+	if mr.timers == nil {
+		mr.timers = make(map[TimerType]Measure)
+	}
+	if a, b := mr.timers[tt]; b {
+		return a
+	}
+	return 0
+}

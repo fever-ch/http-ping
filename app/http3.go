@@ -19,6 +19,8 @@ package app
 import (
 	"context"
 	"crypto/tls"
+	"fever.ch/http-ping/stats"
+	"fmt"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"net/http"
@@ -28,16 +30,42 @@ import (
 
 func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 	return &http3.RoundTripper{
-
 		DisableCompression: config.DisableCompression,
 		Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
 
+			registry := stats.NewTimerRegistry()
+			//quicTimer := stats.NewTimer()
+
+			registry.Get(stats.DNS).Start()
 			connAddr, e := w.resolver.resolveConn(addr)
 			if e != nil {
 				return nil, e
 			}
 			runtimeConfig.ResolvedConnAddress = connAddr
+			registry.Get(stats.DNS).Stop()
+
+			fmt.Printf("XXX dns  %d\n", registry.Get(stats.DNS).Duration())
+			// DNS done
+
+			registry.Get(stats.PreQUIC).Start()
+			registry.Get(stats.FullQUIC).Start()
+
 			dae, err := quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
+			if err != nil {
+				return nil, err
+			}
+
+			registry.Get(stats.PreQUIC).Stop()
+
+			go func() {
+				select {
+				case <-dae.HandshakeComplete():
+					registry.Get(stats.FullQUIC).Stop()
+					fmt.Printf("PreQUIC   %d\n", registry.Get(stats.PreQUIC).Duration().Microseconds())
+					fmt.Printf("FullQUIC  %d\n", registry.Get(stats.FullQUIC).Duration().Microseconds())
+				}
+
+			}()
 
 			return wrapEarlyConnection(dae, w), err
 		},

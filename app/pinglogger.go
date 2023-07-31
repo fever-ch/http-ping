@@ -52,7 +52,7 @@ func (logger *quietLogger) onMeasure(m *HTTPMeasure) {
 	logger.measures.attempts++
 	if !m.IsFailure {
 		logger.measures.successes++
-		logger.measures.latencies = append(logger.measures.latencies, m.TotalTime)
+		logger.measures.latencies = append(logger.measures.latencies, m.MeasureRegistry.Get(stats.Total))
 	}
 }
 
@@ -128,7 +128,7 @@ func (logger *standardLogger) onMeasure(measure *HTTPMeasure) {
 		_, _ = fmt.Fprintf(logger.stdout, "%4d: Error: %s\n", logger.measures.attempts, measure.FailureCause)
 		return
 	}
-	_, _ = fmt.Fprintf(logger.stdout, "%8d: %s, %s, code=%d, size=%d bytes, time=%.1f ms\n", logger.measures.attempts, measure.Proto, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.TotalTime.ToFloat(time.Millisecond))
+	_, _ = fmt.Fprintf(logger.stdout, "%8d: %s, %s, code=%d, size=%d bytes, time=%.1f ms\n", logger.measures.attempts, measure.Proto, measure.RemoteAddr, measure.StatusCode, measure.Bytes, measure.MeasureRegistry.Get(stats.Total).ToFloat(time.Millisecond))
 }
 
 func (logger *standardLogger) onTick(m throughputMeasure) {
@@ -144,16 +144,17 @@ func (logger *standardLogger) onClose() {
 
 type verboseLogger struct {
 	standardLogger
+	stats.MeasureRegistry
 	measureSum *HTTPMeasure
 }
 
 func newVerboseLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
 	return &verboseLogger{
 		standardLogger: *newStandardLogger(config, stdout, pinger),
-		measureSum: &HTTPMeasure{
-			DNSResolution: stats.MeasureNotValid,
-			TCPHandshake:  stats.MeasureNotValid,
-			TLSDuration:   stats.MeasureNotValid,
+		measureSum:     &HTTPMeasure{
+			//DNSResolution: stats.MeasureNotValid,
+			//TCPHandshake:  stats.MeasureNotValid,
+			//TLSDuration:   stats.MeasureNotValid,
 		},
 	}
 }
@@ -173,16 +174,16 @@ func (logger *verboseLogger) onMeasure(measure *HTTPMeasure) {
 	if measure.TLSEnabled {
 		_, _ = fmt.Fprintf(logger.stdout, "          tls version=%s\n", measure.TLSVersion)
 	}
-
-	logger.measureSum.TotalTime += measure.TotalTime
-
-	logger.measureSum.ConnEstablishment = logger.measureSum.ConnEstablishment.SumIfValid(measure.ConnEstablishment)
-	logger.measureSum.DNSResolution = logger.measureSum.DNSResolution.SumIfValid(measure.DNSResolution)
-	logger.measureSum.TCPHandshake = logger.measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
-	logger.measureSum.TLSDuration = logger.measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
-	logger.measureSum.RequestSending += measure.RequestSending
-	logger.measureSum.Wait += measure.Wait
-	logger.measureSum.ResponseIngesting += measure.ResponseIngesting
+	//logger.
+	logger.MeasureRegistry.Append(measure.MeasureRegistry)
+	//logger.measureSum.TotalTime += measure.TotalTime
+	//logger.measureSum.ConnEstablishment = logger.measureSum.ConnEstablishment.SumIfValid(measure.ConnEstablishment)
+	//logger.measureSum.DNSResolution = logger.measureSum.DNSResolution.SumIfValid(measure.DNSResolution)
+	//logger.measureSum.TCPHandshake = logger.measureSum.TCPHandshake.SumIfValid(measure.TCPHandshake)
+	//logger.measureSum.TLSDuration = logger.measureSum.TLSDuration.SumIfValid(measure.TLSDuration)
+	//logger.measureSum.RequestSending += measure.RequestSending
+	//logger.measureSum.Wait += measure.Wait
+	//logger.measureSum.ResponseIngesting += measure.ResponseIngesting
 
 	_, _ = fmt.Fprintf(logger.stdout, "\n")
 
@@ -199,17 +200,17 @@ func (logger *verboseLogger) onClose() {
 	successes := logger.measures.successes
 
 	if successes > 0 && !logger.config.Throughput {
-
-		logger.measureSum.TotalTime = logger.measureSum.TotalTime.Divide(successes)
-		logger.measureSum.ConnEstablishment = logger.measureSum.ConnEstablishment.Divide(successes)
-		logger.measureSum.DNSResolution = logger.measureSum.DNSResolution.Divide(successes)
-		logger.measureSum.TCPHandshake = logger.measureSum.TCPHandshake.Divide(successes)
-		logger.measureSum.TLSDuration = logger.measureSum.TLSDuration.Divide(successes)
-		logger.measureSum.RequestSending = logger.measureSum.RequestSending.Divide(successes)
-		logger.measureSum.Wait = logger.measureSum.Wait.Divide(successes)
-		logger.measureSum.ResponseIngesting = logger.measureSum.ResponseIngesting.Divide(successes)
-
-		logger.measureSum.TLSEnabled = logger.measureSum.TLSDuration > 0
+		logger.MeasureRegistry.Divide(successes)
+		//logger.measureSum.TotalTime = logger.measureSum.TotalTime.Divide(successes)
+		//logger.measureSum.ConnEstablishment = logger.measureSum.ConnEstablishment.Divide(successes)
+		//logger.measureSum.DNSResolution = logger.measureSum.DNSResolution.Divide(successes)
+		//logger.measureSum.TCPHandshake = logger.measureSum.TCPHandshake.Divide(successes)
+		//logger.measureSum.TLSDuration = logger.measureSum.TLSDuration.Divide(successes)
+		//logger.measureSum.RequestSending = logger.measureSum.RequestSending.Divide(successes)
+		//logger.measureSum.Wait = logger.measureSum.Wait.Divide(successes)
+		//logger.measureSum.ResponseIngesting = logger.measureSum.ResponseIngesting.Divide(successes)
+		logger.measureSum.TLSEnabled = logger.measureSum.MeasureRegistry.Get(stats.TLS) > 0
+		//logger.measureSum.TLSEnabled = logger.measureSum.TLSDuration > 0
 
 		_, _ = fmt.Fprintf(logger.stdout, "\naverage latency contributions:\n")
 
@@ -220,17 +221,17 @@ func (logger *verboseLogger) onClose() {
 func (logger *verboseLogger) drawMeasure(measure *HTTPMeasure, stdout io.Writer) {
 	entries := measureEntry{
 		label:    "request and response",
-		duration: measure.TotalTime,
+		duration: measure.MeasureRegistry.Get(stats.Total),
 		children: []*measureEntry{
-			{label: "connection setup", duration: measure.ConnEstablishment,
+			{label: "connection setup", duration: measure.MeasureRegistry.Get(stats.Conn),
 				children: []*measureEntry{
-					{label: "DNS resolution", duration: measure.DNSResolution},
-					{label: "TCP handshake", duration: measure.TCPHandshake},
-					{label: "TLS handshake", duration: measure.TLSDuration},
+					{label: "DNS resolution", duration: measure.MeasureRegistry.Get(stats.DNS)},
+					{label: "TCP handshake", duration: measure.MeasureRegistry.Get(stats.TCP)},
+					{label: "TLS handshake", duration: measure.MeasureRegistry.Get(stats.TLS)},
 				}},
-			{label: "request sending", duration: measure.RequestSending},
-			{label: "wait", duration: measure.Wait},
-			{label: "response ingestion", duration: measure.ResponseIngesting},
+			{label: "request sending", duration: measure.MeasureRegistry.Get(stats.Req)},
+			{label: "wait", duration: measure.MeasureRegistry.Get(stats.Wait)},
+			{label: "response ingestion", duration: measure.MeasureRegistry.Get(stats.Resp)},
 		},
 	}
 	if !measure.TLSEnabled {

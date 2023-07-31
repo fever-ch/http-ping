@@ -17,6 +17,7 @@
 package app
 
 import (
+	"fever.ch/http-ping/stats"
 	"fmt"
 	"io"
 	"os"
@@ -179,7 +180,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 						tickerChan = (time.NewTicker(config.ThroughputRefresh)).C
 						tpuStarted = true
 					}
-					throughputMeasurer.Count(measure.TotalTime)
+					throughputMeasurer.Count(measure.MeasureRegistry.Get(stats.Total))
 
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")
