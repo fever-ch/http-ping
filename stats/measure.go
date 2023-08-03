@@ -99,9 +99,9 @@ func (mr *MeasuresCollection) Append(other *MeasuresCollection) {
 }
 
 func (mr *MeasuresCollection) Divide(successes int64) {
-	//for r, i := range mr.timers {
-	//	mr.Set(r, i/Measure(successes))
-	//}
+	for r, i := range mr.timers {
+		mr.Set(r, i/Measure(successes))
+	}
 }
 
 func (mr *MeasuresCollection) Get(tt TimerType) Measure {
