@@ -84,13 +84,11 @@ func (earlyConnectionWrapper *earlyConnectionWrapper) ConnectionState() quic.Con
 }
 
 func (earlyConnectionWrapper *earlyConnectionWrapper) SendMessage(bytes []byte) error {
-
 	return earlyConnectionWrapper.ec.SendMessage(bytes)
 }
 
 func (earlyConnectionWrapper *earlyConnectionWrapper) ReceiveMessage() ([]byte, error) {
 	return earlyConnectionWrapper.ec.ReceiveMessage()
-
 }
 
 func (earlyConnectionWrapper *earlyConnectionWrapper) HandshakeComplete() <-chan struct{} {

@@ -260,17 +260,8 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	var reused bool
 	var remoteAddr string
 
-	timerRegistry := stats.NewTimerRegistry()
-	//totalTimer := newTimer()
-	//connTimer := newTimer()
-	//dnsTimer := newTimer()
-	//tlsTimer := newTimer()
-	//tcpTimer := newTimer()
-	//reqTimer := newTimer()
-	//waitTimer := newTimer()
-	//responseTimer := newTimer()
-	//dnsTimer.start()
-	//dnsTimer.stop()
+	timerRegistry := stats.NewTimersCollection()
+
 	clientTrace := &httptrace.ClientTrace{
 		TLSHandshakeStart: func() {
 			timerRegistry.Get(stats.TLS).Start()
@@ -309,23 +300,46 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		},
 	}
 
-	ctx := sockettrace.WithTrace(context.Background(),
-		&sockettrace.ConnTrace{
-			Read: func(i int) {
-				atomic.AddInt64(&webClient.reads, int64(i))
-			},
-			Write: func(i int) {
-				atomic.AddInt64(&webClient.writes, int64(i))
-			},
-			TCPStart: func() {
-				timerRegistry.Get(stats.TCP).Start()
-			},
-			TCPEstablished: func() {
-				timerRegistry.Get(stats.TCP).Stop()
-			},
-		})
+	http3ClientTrace := &Http3ClientTrace{
+		GetConn: func(hostPort string) {
+			timerRegistry.Get(stats.Conn).Start()
+		},
+		GotConn: func() {
+			timerRegistry.Get(stats.Conn).Stop()
+			timerRegistry.Get(stats.Req).Start()
+		},
 
-	traceCtx := httptrace.WithClientTrace(ctx, clientTrace)
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			timerRegistry.Get(stats.DNS).Start()
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			timerRegistry.Get(stats.DNS).Stop()
+		},
+
+		QUICStart: func() { timerRegistry.Get(stats.QUIC).Start() },
+		QUICDone:  func() { timerRegistry.Get(stats.QUIC).Stop() },
+	}
+
+	connTrace := &sockettrace.ConnTrace{
+		Read: func(i int) {
+			atomic.AddInt64(&webClient.reads, int64(i))
+		},
+		Write: func(i int) {
+			atomic.AddInt64(&webClient.writes, int64(i))
+		},
+		TCPStart: func() {
+			timerRegistry.Get(stats.TCP).Start()
+		},
+		TCPEstablished: func() {
+			timerRegistry.Get(stats.TCP).Stop()
+		},
+	}
+
+	ctx := WithTrace(context.Background(), http3ClientTrace)
+
+	ctxx := sockettrace.WithTrace(ctx, connTrace)
+
+	traceCtx := httptrace.WithClientTrace(ctxx, clientTrace)
 
 	req = req.WithContext(traceCtx)
 
@@ -433,7 +447,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		TLSVersion:   tlsVersion,
 		AltSvcH3:     altSvcH3,
 
-		MeasureRegistry: timerRegistry.Measure(),
+		MeasuresCollection: timerRegistry.Measure(),
 
 		//DNSResolution:     timerRegistry.get(DNS).measure(),
 		//TCPHandshake:      timerRegistry.get(TCP).measure(),

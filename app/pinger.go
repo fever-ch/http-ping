@@ -39,7 +39,7 @@ type HTTPMeasure struct {
 	TLSVersion   string
 	AltSvcH3     string
 
-	MeasureRegistry *stats.MeasureRegistry
+	MeasuresCollection *stats.MeasuresCollection
 
 	//TotalTime         stats.Measure
 	//DNSResolution     stats.Measure

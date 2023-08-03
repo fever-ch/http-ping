@@ -75,30 +75,48 @@ func (m Measure) ToFloat(unit time.Duration) float64 {
 	return float64(time.Duration(m).Nanoseconds()) / float64(unit)
 }
 
-func NewMeasureRegistry() *MeasureRegistry {
-	return &MeasureRegistry{
+func NewMeasureRegistry() *MeasuresCollection {
+	return &MeasuresCollection{
 		timers: make(map[TimerType]Measure),
 	}
 }
 
-type MeasureRegistry struct {
+type MeasuresCollection struct {
 	timers map[TimerType]Measure
 }
 
-func (mr *MeasureRegistry) Append(other *MeasureRegistry) {
-
+func (mr *MeasuresCollection) Append(other *MeasuresCollection) {
+	for r, i := range other.timers {
+		if i.IsValid() {
+			if v := mr.Get(r); v.IsValid() {
+				mr.Set(r, v+i)
+			} else {
+				mr.Set(r, i)
+			}
+		}
+	}
+	println()
 }
 
-func (mr *MeasureRegistry) Divide(successes int64) {
-
+func (mr *MeasuresCollection) Divide(successes int64) {
+	//for r, i := range mr.timers {
+	//	mr.Set(r, i/Measure(successes))
+	//}
 }
 
-func (mr *MeasureRegistry) Get(tt TimerType) Measure {
+func (mr *MeasuresCollection) Get(tt TimerType) Measure {
 	if mr.timers == nil {
 		mr.timers = make(map[TimerType]Measure)
 	}
 	if a, b := mr.timers[tt]; b {
 		return a
 	}
-	return 0
+	return MeasureNotValid
+}
+
+func (mr *MeasuresCollection) Set(tt TimerType, m Measure) {
+	if mr.timers == nil {
+		mr.timers = make(map[TimerType]Measure)
+	}
+	mr.timers[tt] = m
 }

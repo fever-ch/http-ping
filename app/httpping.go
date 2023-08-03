@@ -180,7 +180,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 						tickerChan = (time.NewTicker(config.ThroughputRefresh)).C
 						tpuStarted = true
 					}
-					throughputMeasurer.Count(measure.MeasureRegistry.Get(stats.Total))
+					throughputMeasurer.Count(measure.MeasuresCollection.Get(stats.Total))
 
 					if config.AudibleBell {
 						_, _ = fmt.Fprintf(stdout, "\a")

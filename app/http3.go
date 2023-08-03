@@ -19,53 +19,141 @@ package app
 import (
 	"context"
 	"crypto/tls"
-	"fever.ch/http-ping/stats"
-	"fmt"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
+	"net"
 	"net/http"
+	"net/http/httptrace"
+	"reflect"
 	"regexp"
 	"strings"
 )
+
+type http3EventKey struct{}
+
+type Http3ClientTrace struct {
+	GetConn func(hostPort string)
+
+	// GotConn is called after a successful connection is
+	// obtained. There is no hook for failure to obtain a
+	// connection; instead, use the error from
+	// Transport.RoundTrip.
+	GotConn func()
+
+	// DNSStart is called when a DNS lookup begins.
+	DNSStart func(info httptrace.DNSStartInfo)
+
+	// DNSDone is called when a DNS lookup ends.
+	DNSDone func(info httptrace.DNSDoneInfo)
+
+	QUICStart func()
+
+	QUICDone func()
+}
+
+// compose modifies t such that it respects the previously-registered hooks in old,
+// subject to the composition policy requested in t.Compose.
+func (t *Http3ClientTrace) compose(old *Http3ClientTrace) {
+	if old == nil {
+		return
+	}
+	tv := reflect.ValueOf(t).Elem()
+	ov := reflect.ValueOf(old).Elem()
+	structType := tv.Type()
+	for i := 0; i < structType.NumField(); i++ {
+		tf := tv.Field(i)
+		hookType := tf.Type()
+		if hookType.Kind() != reflect.Func {
+			continue
+		}
+		of := ov.Field(i)
+		if of.IsNil() {
+			continue
+		}
+		if tf.IsNil() {
+			tf.Set(of)
+			continue
+		}
+
+		// Make a copy of tf for tf to call. (Otherwise it
+		// creates a recursive call cycle and stack overflows)
+		tfCopy := reflect.ValueOf(tf.Interface())
+
+		// We need to call both tf and of in some order.
+		newFunc := reflect.MakeFunc(hookType, func(args []reflect.Value) []reflect.Value {
+			tfCopy.Call(args)
+			return of.Call(args)
+		})
+		tv.Field(i).Set(newFunc)
+	}
+}
+
+// ContextConnTrace returns the ClientTrace associated with the
+// provided context. If none, it returns nil.
+func ContextHttp3ClientTrace(ctx context.Context) *Http3ClientTrace {
+	trace, _ := ctx.Value(http3EventKey{}).(*Http3ClientTrace)
+	return trace
+}
+
+// WithTrace function binds a specific context.Context to as specific ConnTrace
+func WithTrace(ctx context.Context, trace *Http3ClientTrace) context.Context {
+	if trace == nil {
+		panic("nil trace")
+	}
+	old := ContextHttp3ClientTrace(ctx)
+	trace.compose(old)
+
+	ctx = context.WithValue(ctx, http3EventKey{}, trace)
+	return ctx
+}
 
 func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 	return &http3.RoundTripper{
 		DisableCompression: config.DisableCompression,
 		Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
 
-			registry := stats.NewTimerRegistry()
-			//quicTimer := stats.NewTimer()
+			tr, _ := ctx.Value(http3EventKey{}).(*Http3ClientTrace)
 
-			registry.Get(stats.DNS).Start()
+			if tr != nil && tr.GetConn != nil {
+				tr.GetConn(addr)
+			}
+
+			if tr != nil && tr.DNSStart != nil {
+				tr.DNSStart(httptrace.DNSStartInfo{
+					Host: addr,
+				})
+			}
+
 			connAddr, e := w.resolver.resolveConn(addr)
+
 			if e != nil {
 				return nil, e
 			}
 			runtimeConfig.ResolvedConnAddress = connAddr
-			registry.Get(stats.DNS).Stop()
 
-			fmt.Printf("XXX dns  %d\n", registry.Get(stats.DNS).Duration())
-			// DNS done
+			if tr != nil && tr.DNSDone != nil {
 
-			registry.Get(stats.PreQUIC).Start()
-			registry.Get(stats.FullQUIC).Start()
+				tr.DNSDone(httptrace.DNSDoneInfo{
+					Addrs: []net.IPAddr{},
+				})
+			}
+
+			if tr != nil && tr.QUICStart != nil {
+				tr.QUICStart()
+			}
 
 			dae, err := quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
 			if err != nil {
 				return nil, err
 			}
 
-			registry.Get(stats.PreQUIC).Stop()
+			if tr != nil && tr.QUICDone != nil {
+				tr.QUICDone()
+			}
 
-			go func() {
-				select {
-				case <-dae.HandshakeComplete():
-					registry.Get(stats.FullQUIC).Stop()
-					fmt.Printf("PreQUIC   %d\n", registry.Get(stats.PreQUIC).Duration().Microseconds())
-					fmt.Printf("FullQUIC  %d\n", registry.Get(stats.FullQUIC).Duration().Microseconds())
-				}
-
-			}()
+			if tr != nil && tr.GotConn != nil {
+				tr.GotConn()
+			}
 
 			return wrapEarlyConnection(dae, w), err
 		},

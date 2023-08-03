@@ -78,8 +78,7 @@ const (
 	Conn
 	DNS
 	TLS
-	PreQUIC
-	FullQUIC
+	QUIC
 	TCP
 	Req
 	Wait
@@ -90,7 +89,7 @@ type TimerRegistry struct {
 	timers map[TimerType]*Timer
 }
 
-func NewTimerRegistry() *TimerRegistry {
+func NewTimersCollection() *TimerRegistry {
 	return &TimerRegistry{
 		timers: make(map[TimerType]*Timer),
 	}
@@ -104,7 +103,7 @@ func (tr *TimerRegistry) Get(timerType TimerType) *Timer {
 	return value
 }
 
-func (tr *TimerRegistry) Measure() *MeasureRegistry {
+func (tr *TimerRegistry) Measure() *MeasuresCollection {
 	mr := NewMeasureRegistry()
 	for k, v := range tr.timers {
 		mr.timers[k] = v.measure()
