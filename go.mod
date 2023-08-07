@@ -3,12 +3,12 @@ module fever.ch/http-ping
 go 1.20
 
 require (
-	github.com/domainr/dnsr v0.0.0-20230710150025-adbf7e4e1548
+	github.com/domainr/dnsr v0.0.0-20230728081905-ba3597410a36
 	github.com/miekg/dns v1.1.55
-	github.com/quic-go/quic-go v0.36.2
+	github.com/quic-go/quic-go v0.37.3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.12.0
+	golang.org/x/net v0.14.0
 )
 
 require (
@@ -19,11 +19,11 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
-	github.com/quic-go/qtls-go1-20 v0.2.2 // indirect
-	golang.org/x/crypto v0.11.0 // indirect
+	github.com/quic-go/qtls-go1-20 v0.3.1 // indirect
+	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/tools v0.11.0 // indirect
 )

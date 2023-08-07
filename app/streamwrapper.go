@@ -87,8 +87,8 @@ func (earlyConnectionWrapper *earlyConnectionWrapper) SendMessage(bytes []byte) 
 	return earlyConnectionWrapper.ec.SendMessage(bytes)
 }
 
-func (earlyConnectionWrapper *earlyConnectionWrapper) ReceiveMessage() ([]byte, error) {
-	return earlyConnectionWrapper.ec.ReceiveMessage()
+func (earlyConnectionWrapper *earlyConnectionWrapper) ReceiveMessage(context context.Context) ([]byte, error) {
+	return earlyConnectionWrapper.ec.ReceiveMessage(context)
 }
 
 func (earlyConnectionWrapper *earlyConnectionWrapper) HandshakeComplete() <-chan struct{} {
