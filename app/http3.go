@@ -108,6 +108,9 @@ func WithTrace(ctx context.Context, trace *Http3ClientTrace) context.Context {
 }
 
 func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
+	if config.Method == http.MethodGet {
+		config.Method = http3.MethodGet0RTT
+	}
 	return &http3.RoundTripper{
 		DisableCompression: config.DisableCompression,
 		Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
