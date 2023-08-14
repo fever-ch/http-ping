@@ -77,7 +77,7 @@ func TestInterceptionOfHTTPRequest(t *testing.T) {
 
 	traceCtx := httptrace.WithClientTrace(ctxB, clientTrace)
 
-	req, _ := http.NewRequest("GET", ts.URL, nil)
+	req, _ := http.NewRequest(http.MethodGet, ts.URL, nil)
 
 	req = req.WithContext(traceCtx)
 

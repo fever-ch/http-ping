@@ -25,6 +25,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"net/http"
 	"regexp"
 	"time"
 )
@@ -240,7 +241,7 @@ func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTT
 
 	rootCmd.Flags().StringVarP(&config.ConnTarget, "conn-target", "", "", "force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)")
 
-	rootCmd.Flags().StringVarP(&config.Method, "method", "", "GET", "select a which HTTP method to be used")
+	rootCmd.Flags().StringVarP(&config.Method, "method", "", http.MethodGet, "select a which HTTP method to be used")
 
 	rootCmd.Flags().BoolVarP(&xp.head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
 
