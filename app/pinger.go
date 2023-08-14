@@ -41,15 +41,6 @@ type HTTPMeasure struct {
 
 	MeasuresCollection *stats.MeasuresCollection
 
-	//TotalTime         stats.Measure
-	//DNSResolution     stats.Measure
-	//TCPHandshake      stats.Measure
-	//TLSDuration       stats.Measure
-	//ConnEstablishment stats.Measure
-	//RequestSending    stats.Measure
-	//ResponseIngesting stats.Measure
-	//Wait              stats.Measure
-
 	IsFailure    bool
 	FailureCause string
 	Headers      *http.Header

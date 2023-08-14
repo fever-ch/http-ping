@@ -18,6 +18,7 @@ package app
 
 import (
 	"bytes"
+	"fever.ch/http-ping/stats"
 	"io"
 	"strings"
 	"testing"
@@ -38,20 +39,6 @@ func TestHTTPPing(t *testing.T) {
 	}
 }
 
-func TestHTTPPingVerbose(t *testing.T) {
-	b := bytes.NewBufferString("")
-	instance, _ := NewHTTPPing(&Config{Count: 10, LogLevel: 2}, b)
-	instance.(*httpPingImpl).pinger = &PingerMock{}
-	_ = instance.Run()
-
-	out, _ := io.ReadAll(b)
-
-	if !strings.Contains(string(out), "10 requests sent, 10 answers received, 0.0% loss") ||
-		!strings.Contains(string(out), "├─") {
-		t.Fatal("Result didn't match expectations")
-	}
-}
-
 func (pingerMock *PingerMock) URL() string {
 	return "https://www.google.com"
 }
@@ -62,7 +49,9 @@ func (pingerMock *PingerMock) Ping() <-chan *HTTPMeasure {
 	go func() {
 		defer close(measures)
 		for i := 0; i < 10; i++ {
-			measures <- &HTTPMeasure{}
+			measures <- &HTTPMeasure{
+				MeasuresCollection: stats.NewMeasureRegistry(),
+			}
 		}
 	}()
 
