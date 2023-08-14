@@ -100,7 +100,7 @@ func (tr *TimerRegistry) Get(timerType TimerType) *Timer {
 	if _, ok := tr.timers[timerType]; !ok {
 		tr.timers[timerType] = NewTimer()
 	}
-	value, _ := tr.timers[timerType]
+	value := tr.timers[timerType]
 	return value
 }
 
