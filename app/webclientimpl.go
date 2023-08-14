@@ -303,31 +303,6 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		},
 	}
 
-	http3ClientTrace := &Http3ClientTrace{
-		GetConn: func(hostPort string) {
-			timerRegistry.Get(stats.Conn).Start()
-		},
-		GotConn: func() {
-			timerRegistry.Get(stats.Conn).Stop()
-			timerRegistry.Get(stats.Req).Start()
-		},
-
-		DNSStart: func(info httptrace.DNSStartInfo) {
-			timerRegistry.Get(stats.DNS).Start()
-		},
-		DNSDone: func(info httptrace.DNSDoneInfo) {
-			timerRegistry.Get(stats.DNS).Stop()
-		},
-
-		QUICStart: func() {
-			timerRegistry.Get(stats.QUIC).Start()
-		},
-		QUICDone: func() {
-			timerRegistry.Get(stats.QUIC).Stop()
-			timerRegistry.Get(stats.ReqAndWait).Start()
-		},
-	}
-
 	connTrace := &sockettrace.ConnTrace{
 		Read: func(i int) {
 			atomic.AddInt64(&webClient.reads, int64(i))
@@ -346,7 +321,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	traceCtx :=
 		httptrace.WithClientTrace(
 			sockettrace.WithTrace(
-				WithTrace(context.Background(), http3ClientTrace),
+				context.Background(),
 				connTrace),
 			clientTrace)
 
