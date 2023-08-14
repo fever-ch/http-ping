@@ -338,11 +338,12 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		},
 	}
 
-	ctx := WithTrace(context.Background(), http3ClientTrace)
-
-	ctxx := sockettrace.WithTrace(ctx, connTrace)
-
-	traceCtx := httptrace.WithClientTrace(ctxx, clientTrace)
+	traceCtx :=
+		httptrace.WithClientTrace(
+			sockettrace.WithTrace(
+				WithTrace(context.Background(), http3ClientTrace),
+				connTrace),
+			clientTrace)
 
 	req = req.WithContext(traceCtx)
 
