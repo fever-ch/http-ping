@@ -317,7 +317,10 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		},
 
 		QUICStart: func() { timerRegistry.Get(stats.QUIC).Start() },
-		QUICDone:  func() { timerRegistry.Get(stats.QUIC).Stop() },
+		QUICDone: func() {
+			timerRegistry.Get(stats.QUIC).Stop()
+			timerRegistry.Get(stats.ReqAndWait).Start()
+		},
 	}
 
 	connTrace := &sockettrace.ConnTrace{
@@ -387,6 +390,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		return webClient.DoMeasure(followRedirect)
 	}
 
+	timerRegistry.Get(stats.ReqAndWait).Stop()
 	timerRegistry.Get(stats.Resp).Start()
 
 	s, err := io.Copy(io.Discard, res.Body)
@@ -450,14 +454,6 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		AltSvcH3:     altSvcH3,
 
 		MeasuresCollection: timerRegistry.Measure(),
-
-		//DNSResolution:     timerRegistry.get(DNS).measure(),
-		//TCPHandshake:      timerRegistry.get(TCP).measure(),
-		//TLSDuration:       timerRegistry.get(TLS).measure(),
-		//ConnEstablishment: timerRegistry.get(Conn).measure(),
-		//RequestSending:    timerRegistry.get(Req).measure(),
-		//Wait:              timerRegistry.get(Wait).measure(),
-		//ResponseIngesting: timerRegistry.get(Resp).measure(),
 
 		RemoteAddr: remoteAddr,
 

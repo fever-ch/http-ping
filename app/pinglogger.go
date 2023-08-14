@@ -231,6 +231,7 @@ func (logger *verboseLogger) drawMeasure(measure *HTTPMeasure, stdout io.Writer)
 					{label: "QUIC handshake", duration: measure.MeasuresCollection.Get(stats.QUIC)},
 					{label: "TLS handshake", duration: measure.MeasuresCollection.Get(stats.TLS)},
 				}},
+			{label: "request sending and wait for answer", duration: measure.MeasuresCollection.Get(stats.ReqAndWait)},
 			{label: "request sending", duration: measure.MeasuresCollection.Get(stats.Req)},
 			{label: "wait", duration: measure.MeasuresCollection.Get(stats.Wait)},
 			{label: "response ingestion", duration: measure.MeasuresCollection.Get(stats.Resp)},

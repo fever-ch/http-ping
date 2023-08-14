@@ -83,6 +83,7 @@ const (
 	Req
 	Wait
 	Resp
+	ReqAndWait // temporary for http3, since Req and Wait cannot be distinguished yet with quic-go
 )
 
 type TimerRegistry struct {
