@@ -115,14 +115,14 @@ func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 		DisableCompression: config.DisableCompression,
 		Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
 
-			tr, _ := ctx.Value(http3EventKey{}).(*Http3ClientTrace)
+			trh := httptrace.ContextClientTrace(ctx)
 
-			if tr != nil && tr.GetConn != nil {
-				tr.GetConn(addr)
+			if trh != nil && trh.GetConn != nil {
+				trh.GetConn(addr)
 			}
 
-			if tr != nil && tr.DNSStart != nil {
-				tr.DNSStart(httptrace.DNSStartInfo{
+			if trh != nil && trh.DNSStart != nil {
+				trh.DNSStart(httptrace.DNSStartInfo{
 					Host: addr,
 				})
 			}
@@ -134,15 +134,15 @@ func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 			}
 			runtimeConfig.ResolvedConnAddress = connAddr
 
-			if tr != nil && tr.DNSDone != nil {
+			if trh != nil && trh.DNSDone != nil {
 
-				tr.DNSDone(httptrace.DNSDoneInfo{
+				trh.DNSDone(httptrace.DNSDoneInfo{
 					Addrs: []net.IPAddr{},
 				})
 			}
 
-			if tr != nil && tr.QUICStart != nil {
-				tr.QUICStart()
+			if trh != nil && trh.TLSHandshakeStart != nil {
+				trh.TLSHandshakeStart()
 			}
 
 			dae, err := quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
@@ -150,12 +150,12 @@ func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 				return nil, err
 			}
 
-			if tr != nil && tr.QUICDone != nil {
-				tr.QUICDone()
+			if trh != nil && trh.TLSHandshakeDone != nil {
+				trh.TLSHandshakeDone(tls.ConnectionState{}, nil)
 			}
 
-			if tr != nil && tr.GotConn != nil {
-				tr.GotConn()
+			if trh != nil && trh.GotConn != nil {
+				trh.GotConn(httptrace.GotConnInfo{Conn: connAdapter{remoteAddr: dae.RemoteAddr()}})
 			}
 
 			return wrapEarlyConnection(dae, w), err
@@ -166,6 +166,15 @@ func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 		},
 		QuicConfig: &(quic.Config{}),
 	}, nil
+}
+
+type connAdapter struct {
+	*net.UDPConn
+	remoteAddr net.Addr
+}
+
+func (c connAdapter) RemoteAddr() net.Addr {
+	return c.remoteAddr
 }
 
 func CheckAltSvcH3Header(h http.Header) *string {

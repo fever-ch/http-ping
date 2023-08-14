@@ -286,6 +286,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 			remoteAddr = info.Conn.RemoteAddr().String()
 			timerRegistry.Get(stats.Conn).Stop()
 			timerRegistry.Get(stats.Req).Start()
+			timerRegistry.Get(stats.ReqAndWait).Start()
 			reused = info.Reused
 		},
 
@@ -296,6 +297,8 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 		GotFirstResponseByte: func() {
 			timerRegistry.Get(stats.Wait).Stop()
+			timerRegistry.Get(stats.ReqAndWait).Stop()
+
 			timerRegistry.Get(stats.Resp).Start()
 		},
 	}
@@ -316,7 +319,9 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 			timerRegistry.Get(stats.DNS).Stop()
 		},
 
-		QUICStart: func() { timerRegistry.Get(stats.QUIC).Start() },
+		QUICStart: func() {
+			timerRegistry.Get(stats.QUIC).Start()
+		},
 		QUICDone: func() {
 			timerRegistry.Get(stats.QUIC).Stop()
 			timerRegistry.Get(stats.ReqAndWait).Start()
