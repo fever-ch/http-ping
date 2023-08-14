@@ -46,8 +46,6 @@ type HTTPMeasure struct {
 	Headers      *http.Header
 }
 
-func NewHTTPMeasure() {}
-
 // Pinger does the calls to the actual HTTP/S component
 type Pinger interface {
 	Ping() <-chan *HTTPMeasure

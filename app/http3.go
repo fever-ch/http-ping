@@ -36,17 +36,11 @@ func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 		DisableCompression: config.DisableCompression,
 		Dial: func(ctx context.Context, addr string, tlsCfg *tls.Config, cfg *quic.Config) (quic.EarlyConnection, error) {
 
-			trh := httptrace.ContextClientTrace(ctx)
+			trace := httptrace.ContextClientTrace(ctx)
 
-			if trh != nil && trh.GetConn != nil {
-				trh.GetConn(addr)
-			}
+			traceGetConn(trace, addr)
 
-			if trh != nil && trh.DNSStart != nil {
-				trh.DNSStart(httptrace.DNSStartInfo{
-					Host: addr,
-				})
-			}
+			traceDNSStart(trace, addr)
 
 			connAddr, e := w.resolver.resolveConn(addr)
 
@@ -55,29 +49,18 @@ func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 			}
 			runtimeConfig.ResolvedConnAddress = connAddr
 
-			if trh != nil && trh.DNSDone != nil {
+			traceDNSDone(trace, []net.IPAddr{})
 
-				trh.DNSDone(httptrace.DNSDoneInfo{
-					Addrs: []net.IPAddr{},
-				})
-			}
-
-			if trh != nil && trh.TLSHandshakeStart != nil {
-				trh.TLSHandshakeStart()
-			}
+			traceTLSHandshakeStart(trace)
 
 			dae, err := quic.DialAddrEarly(ctx, connAddr, tlsCfg, cfg)
 			if err != nil {
 				return nil, err
 			}
 
-			if trh != nil && trh.TLSHandshakeDone != nil {
-				trh.TLSHandshakeDone(tls.ConnectionState{}, nil)
-			}
+			traceTLSHandshakeDone(trace, tls.ConnectionState{})
 
-			if trh != nil && trh.GotConn != nil {
-				trh.GotConn(httptrace.GotConnInfo{Conn: connAdapter{remoteAddr: dae.RemoteAddr()}})
-			}
+			traceGotConn(trace, httptrace.GotConnInfo{Conn: connAdapter{remoteAddr: dae.RemoteAddr()}})
 
 			return wrapEarlyConnection(dae, w), err
 		},
@@ -87,6 +70,46 @@ func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 		},
 		QuicConfig: &(quic.Config{}),
 	}, nil
+}
+
+func traceGotConn(trace *httptrace.ClientTrace, info httptrace.GotConnInfo) {
+	if trace != nil && trace.GotConn != nil {
+		trace.GotConn(info)
+	}
+}
+
+func traceTLSHandshakeDone(trace *httptrace.ClientTrace, state tls.ConnectionState) {
+	if trace != nil && trace.TLSHandshakeDone != nil {
+		trace.TLSHandshakeDone(state, nil)
+	}
+}
+
+func traceTLSHandshakeStart(trace *httptrace.ClientTrace) {
+	if trace != nil && trace.TLSHandshakeStart != nil {
+		trace.TLSHandshakeStart()
+	}
+}
+
+func traceDNSDone(trace *httptrace.ClientTrace, addrs []net.IPAddr) {
+	if trace != nil && trace.DNSDone != nil {
+		trace.DNSDone(httptrace.DNSDoneInfo{
+			Addrs: addrs,
+		})
+	}
+}
+
+func traceDNSStart(trace *httptrace.ClientTrace, addr string) {
+	if trace != nil && trace.DNSStart != nil {
+		trace.DNSStart(httptrace.DNSStartInfo{
+			Host: addr,
+		})
+	}
+}
+
+func traceGetConn(trace *httptrace.ClientTrace, addr string) {
+	if trace != nil && trace.GetConn != nil {
+		trace.GetConn(addr)
+	}
 }
 
 type connAdapter struct {
