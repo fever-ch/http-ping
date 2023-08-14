@@ -39,19 +39,23 @@ type HTTPMeasure struct {
 	TLSVersion   string
 	AltSvcH3     string
 
-	TotalTime         stats.Measure
-	DNSResolution     stats.Measure
-	TCPHandshake      stats.Measure
-	TLSDuration       stats.Measure
-	ConnEstablishment stats.Measure
-	RequestSending    stats.Measure
-	ResponseIngesting stats.Measure
-	Wait              stats.Measure
+	MeasuresCollection *stats.MeasuresCollection
+
+	//TotalTime         stats.Measure
+	//DNSResolution     stats.Measure
+	//TCPHandshake      stats.Measure
+	//TLSDuration       stats.Measure
+	//ConnEstablishment stats.Measure
+	//RequestSending    stats.Measure
+	//ResponseIngesting stats.Measure
+	//Wait              stats.Measure
 
 	IsFailure    bool
 	FailureCause string
 	Headers      *http.Header
 }
+
+func NewHTTPMeasure() {}
 
 // Pinger does the calls to the actual HTTP/S component
 type Pinger interface {

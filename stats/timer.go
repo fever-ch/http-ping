@@ -14,10 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package app
+package stats
 
 import (
-	"fever.ch/http-ping/stats"
 	"math"
 	"time"
 )
@@ -27,38 +26,87 @@ var (
 	defaultStopTime  = time.UnixMicro(math.MinInt64)
 )
 
-type timer struct {
+type TimerType int
+
+type Timer struct {
 	startTime, stopTime time.Time
 }
 
-func newTimer() *timer {
-	return &timer{
+func NewTimer() *Timer {
+	return &Timer{
 		defaultStartTime,
 		defaultStopTime,
 	}
 }
 
-func (t *timer) start() {
+func (t *Timer) Start() {
 	ts := time.Now()
 	if ts.Before(t.startTime) {
 		t.startTime = ts
 	}
 }
 
-func (t *timer) stop() {
+func (t *Timer) Stop() {
 	ts := time.Now()
 	if ts.After(t.stopTime) {
 		t.stopTime = ts
 	}
 }
 
-func (t *timer) duration() time.Duration {
+func (t *Timer) Duration() time.Duration {
 	return t.stopTime.Sub(t.startTime)
 }
 
-func (t *timer) measure() stats.Measure {
+func (t *Timer) measure() Measure {
 	if t.startTime == defaultStartTime || t.stopTime == defaultStopTime {
-		return stats.MeasureNotInitialized
+		return MeasureNotInitialized
 	}
-	return stats.Measure(t.duration())
+	return Measure(t.Duration())
+}
+
+//totalTimer := NewTimer()
+//connTimer := NewTimer()
+//dnsTimer := NewTimer()
+//tlsTimer := NewTimer()
+//tcpTimer := NewTimer()
+//reqTimer := NewTimer()
+//waitTimer := NewTimer()
+//responseTimer := NewTimer()
+
+const (
+	Total TimerType = iota
+	Conn
+	DNS
+	TLS
+	QUIC
+	TCP
+	Req
+	Wait
+	Resp
+)
+
+type TimerRegistry struct {
+	timers map[TimerType]*Timer
+}
+
+func NewTimersCollection() *TimerRegistry {
+	return &TimerRegistry{
+		timers: make(map[TimerType]*Timer),
+	}
+}
+
+func (tr *TimerRegistry) Get(timerType TimerType) *Timer {
+	if _, ok := tr.timers[timerType]; !ok {
+		tr.timers[timerType] = NewTimer()
+	}
+	value, _ := tr.timers[timerType]
+	return value
+}
+
+func (tr *TimerRegistry) Measure() *MeasuresCollection {
+	mr := NewMeasureRegistry()
+	for k, v := range tr.timers {
+		mr.timers[k] = v.measure()
+	}
+	return mr
 }
