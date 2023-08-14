@@ -387,6 +387,8 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		return webClient.DoMeasure(followRedirect)
 	}
 
+	timerRegistry.Get(stats.Resp).Start()
+
 	s, err := io.Copy(io.Discard, res.Body)
 	if err != nil {
 		return &HTTPMeasure{
