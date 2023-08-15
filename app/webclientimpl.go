@@ -286,7 +286,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 			remoteAddr = info.Conn.RemoteAddr().String()
 			timerRegistry.Get(stats.Conn).Stop()
 			timerRegistry.Get(stats.Req).Start()
-			timerRegistry.Get(stats.ReqAndWait).Start()
+			timerRegistry.Get(stats.ReqAndWait).StartForce()
 			reused = info.Reused
 		},
 
@@ -330,6 +330,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	webClient.prepareReq(req)
 
 	timerRegistry.Get(stats.Total).Start()
+	timerRegistry.Get(stats.ReqAndWait).Start() // for HTTP/3 with keep-alive
 
 	res, err := webClient.httpClient.Do(req)
 

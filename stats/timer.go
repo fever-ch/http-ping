@@ -46,6 +46,10 @@ func (t *Timer) Start() {
 	}
 }
 
+func (t *Timer) StartForce() {
+	t.startTime = time.Now()
+}
+
 func (t *Timer) Stop() {
 	ts := time.Now()
 	if ts.After(t.stopTime) {
