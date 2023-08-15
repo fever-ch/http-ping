@@ -25,14 +25,16 @@ import (
 )
 
 type resolver struct {
-	config *Config
-	cache  map[string]*net.IPAddr
+	config      *Config
+	cache       map[string]*net.IPAddr
+	dnsResolver *dnsr.Resolver
 }
 
 func newResolver(config *Config) *resolver {
 	return &resolver{
-		config: config,
-		cache:  make(map[string]*net.IPAddr),
+		config:      config,
+		cache:       make(map[string]*net.IPAddr),
+		dnsResolver: dnsr.NewResolver(dnsr.WithCache(1024)),
 	}
 }
 
@@ -78,18 +80,18 @@ func resolveWithSpecificServerQtype(qtype uint16, server string, host string) ([
 }
 
 func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, error) {
-
 	type resolveAnswer struct {
 		ip    []*net.IP
 		err   error
 		qtype uint16
 	}
+
 	if network == "ip4" {
 		return resolveWithSpecificServerQtype(dns.TypeA, server, host)
 	} else if network == "ip6" {
 		return resolveWithSpecificServerQtype(dns.TypeAAAA, server, host)
 	} else {
-		var ipv6Address []*net.IP = nil
+		var ipv4Address []*net.IP = nil
 
 		answersChan := make(chan *resolveAnswer)
 
@@ -98,27 +100,31 @@ func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, 
 
 			answersChan <- &resolveAnswer{out, err, qtype}
 		}
-		go ret(dns.TypeA)
+
 		go ret(dns.TypeAAAA)
+		go ret(dns.TypeA)
 
 		for i := 0; i < 2; i++ {
 			if answer := <-answersChan; answer.err == nil && len(answer.ip) > 0 {
 
-				if answer.qtype == dns.TypeA {
+				if answer.qtype == dns.TypeAAAA {
 					return answer.ip, nil
 				}
 
-				ipv6Address = append(ipv6Address, answer.ip...)
+				ipv4Address = append(ipv4Address, answer.ip...)
 			}
 
 		}
 
-		if ipv6Address == nil {
-			return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
+		if ipv4Address == nil {
+			return nil, noSuchHostError(host)
 		}
-		return ipv6Address, nil
+		return ipv4Address, nil
 	}
+}
 
+func noSuchHostError(host string) error {
+	return &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
 }
 
 func (resolver *resolver) resolve(addr string) (*net.IPAddr, error) {
@@ -148,7 +154,7 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 			}
 		}
 		if ip == nil {
-			return nil, &net.DNSError{Err: "no such host", Name: addr, IsNotFound: true}
+			return nil, noSuchHostError(addr)
 		}
 		return &net.IPAddr{IP: ip}, nil
 	} else if resolver.config.DNSServer != "" {
@@ -158,7 +164,7 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 		}
 
 		if len(ip) == 0 {
-			return nil, &net.DNSError{Err: "no such host", Name: addr, IsNotFound: true}
+			return nil, noSuchHostError(addr)
 		}
 
 		return &net.IPAddr{IP: *ip[0]}, nil
@@ -167,7 +173,7 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 	}
 }
 
-func (*resolver) fullResolveFromRoot(network, host string) (*string, error) {
+func (resolver *resolver) fullResolveFromRoot(network, host string) (*string, error) {
 	var qtypes []string
 
 	if network == "ip" {
@@ -180,30 +186,25 @@ func (*resolver) fullResolveFromRoot(network, host string) (*string, error) {
 		qtypes = []string{}
 	}
 
-	r := dnsr.NewResolver(dnsr.WithCache(1024))
-	requestCount := 0
+	return resolver.resolveRecu(host, qtypes)
+}
 
-	var resolveRecu func(r *dnsr.Resolver, host string) (*string, error)
+func (resolver *resolver) resolveRecu(host string, qtypes []string) (*string, error) {
 
-	resolveRecu = func(r *dnsr.Resolver, host string) (*string, error) {
-		requestCount++
-		cnames := make(map[string]struct{})
-		for _, qtype := range qtypes {
-			for _, rr := range r.Resolve(host, qtype) {
-				if rr.Type == qtype {
-					return &rr.Value, nil
-				} else if rr.Type == "CNAME" {
-					cnames[rr.Value] = struct{}{}
-				}
+	cnames := make(map[string]struct{})
+	for _, qtype := range qtypes {
+		for _, rr := range resolver.dnsResolver.Resolve(host, qtype) {
+			if rr.Type == qtype {
+				return &rr.Value, nil
+			} else if rr.Type == "CNAME" {
+				cnames[rr.Value] = struct{}{}
 			}
 		}
-
-		for cname := range cnames {
-			return resolveRecu(r, cname)
-		}
-
-		return nil, fmt.Errorf("no host found: %s", host)
 	}
 
-	return resolveRecu(r, host)
+	for cname := range cnames {
+		return resolver.resolveRecu(cname, qtypes)
+	}
+
+	return nil, fmt.Errorf("no host found: %s", host)
 }

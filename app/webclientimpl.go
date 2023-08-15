@@ -336,8 +336,9 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	if err != nil {
 		return &HTTPMeasure{
-			IsFailure:    true,
-			FailureCause: err.Error(),
+			IsFailure:          true,
+			FailureCause:       err.Error(),
+			MeasuresCollection: timerRegistry.Measure(),
 		}
 	}
 
@@ -365,8 +366,9 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 		if err != nil {
 			return &HTTPMeasure{
-				IsFailure:    true,
-				FailureCause: err.Error(),
+				IsFailure:          true,
+				FailureCause:       err.Error(),
+				MeasuresCollection: timerRegistry.Measure(),
 			}
 		}
 		return webClient.DoMeasure(followRedirect)
@@ -378,8 +380,9 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	s, err := io.Copy(io.Discard, res.Body)
 	if err != nil {
 		return &HTTPMeasure{
-			IsFailure:    true,
-			FailureCause: "I/O error while reading payload",
+			IsFailure:          true,
+			FailureCause:       "I/O error while reading payload",
+			MeasuresCollection: timerRegistry.Measure(),
 		}
 	}
 

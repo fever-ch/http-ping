@@ -158,7 +158,6 @@ func newVerboseLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
 }
 
 func (logger *verboseLogger) onMeasure(measure *HTTPMeasure) {
-
 	if strings.HasPrefix(measure.Proto, "HTTP/3") {
 		measure.MeasuresCollection.Set(stats.QUIC, measure.MeasuresCollection.Get(stats.TLS))
 		measure.MeasuresCollection.Set(stats.TLS, stats.MeasureNotValid)
