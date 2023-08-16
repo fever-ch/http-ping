@@ -205,3 +205,10 @@ You can easily build `http-ping`, if `golang` is installed on your system.
 ```
 $ go install fever.ch/http-ping@latest
 ```
+
+## Notes
+
+### HTTP/3 support
+HTTP/3 support is brought by a 3rd-party library [QUIC-Go](https://github.com/quic-go/quic-go) which APIs differs a bit from the Go's HTTP libraries that are used for HTTP/1 and HTTP/2.
+
+Support for HTTP/3 came with version `1.2.0`, but still needs to be considered as _experimental_.
