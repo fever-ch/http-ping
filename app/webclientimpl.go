@@ -343,35 +343,15 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	}
 
 	altSvcH3 := ""
-	if res != nil {
-		if val := CheckAltSvcH3Header(res.Header); val != nil {
-			altSvcH3 = *val
-		}
+
+	if val := checkAltSvcH3Header(res.Header); val != nil {
+		altSvcH3 = *val
 	}
 
 	if altSvcH3 != "" && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.Http1 && !webClient.config.Http2 {
 		_, _ = fmt.Printf("   ─→     server advertised HTTP/3 endpoint, using HTTP/3\n")
 
-		if altSvcH3 == ":443" {
-			// nothing
-		} else if strings.HasPrefix(altSvcH3, ":") {
-			webClient.url.Host = webClient.url.Host + altSvcH3
-		} else {
-			webClient.url.Host = altSvcH3
-		}
-
-		c := *webClient.config
-		c.Http3 = true
-		err := webClient.update(&c, webClient.runtimeConfig)
-
-		if err != nil {
-			return &HTTPMeasure{
-				IsFailure:          true,
-				FailureCause:       err.Error(),
-				MeasuresCollection: timerRegistry.Measure(),
-			}
-		}
-		return webClient.DoMeasure(followRedirect)
+		return webClient.moveToHttp3(altSvcH3, timerRegistry, followRedirect)
 	}
 
 	timerRegistry.Get(stats.ReqAndWait).Stop()
@@ -426,8 +406,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	}
 
 	return &HTTPMeasure{
-		Proto: res.Proto,
-		//TotalTime:    timerRegistry.get(Total).measure(),
+		Proto:        res.Proto,
 		StatusCode:   res.StatusCode,
 		Bytes:        s,
 		InBytes:      i,
@@ -447,4 +426,28 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		Headers:      &res.Header,
 	}
 
+}
+
+func (webClient *webClientImpl) moveToHttp3(altSvcH3 string, timerRegistry *stats.TimerRegistry, followRedirect bool) *HTTPMeasure {
+
+	if altSvcH3 == ":443" {
+		// nothing
+	} else if strings.HasPrefix(altSvcH3, ":") {
+		webClient.url.Host = webClient.url.Host + altSvcH3
+	} else {
+		webClient.url.Host = altSvcH3
+	}
+
+	c := *webClient.config
+	c.Http3 = true
+	err := webClient.update(&c, webClient.runtimeConfig)
+
+	if err != nil {
+		return &HTTPMeasure{
+			IsFailure:          true,
+			FailureCause:       err.Error(),
+			MeasuresCollection: timerRegistry.Measure(),
+		}
+	}
+	return webClient.DoMeasure(followRedirect)
 }

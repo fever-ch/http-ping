@@ -121,7 +121,7 @@ func (c connAdapter) RemoteAddr() net.Addr {
 	return c.remoteAddr
 }
 
-func CheckAltSvcH3Header(h http.Header) *string {
+func checkAltSvcH3Header(h http.Header) *string {
 	for k, entries := range h {
 		if strings.ToUpper(k) == "ALT-SVC" {
 			for _, entry := range entries {
