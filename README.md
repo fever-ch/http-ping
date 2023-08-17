@@ -8,16 +8,22 @@
 
 `http-ping` is a free software distributed under the [Apache License 2.0](LICENSE).
 
-This piece of software is similar to the usual [_ping networking utility_](https://en.wikipedia.org/wiki/Ping_(networking_utility)) but instead of working on top of ICMP, it works on top of
+This piece of software is similar to the usual [_ping networking
+utility_](https://en.wikipedia.org/wiki/Ping_(networking_utility)) but instead of working on top of ICMP, it works on
+top of
 HTTP/S.
 
-Http-Ping is a small, free, easy-to-use command-line utility that probes a given URL and displays relevant statistics. It is similar to the popular ping utility, but works over HTTP/S instead of ICMP, and with a URL instead of a computer name/IP address. http-ping supports IPv6 addresses.
+Http-Ping is a small, free, easy-to-use command-line utility that probes a given URL and displays relevant statistics.
+It is similar to the popular ping utility, but works over HTTP/S instead of ICMP, and with a URL instead of a computer
+name/IP address. http-ping supports IPv6 addresses.
 
 ## Platforms
 
-This software is written in [Go](https://go.dev), and should then benefit from the [wide list of targets provided by Go](https://go.dev/doc/install/source#environment).
+This software is written in [Go](https://go.dev), and should then benefit from
+the [wide list of targets provided by Go](https://go.dev/doc/install/source#environment).
 
 This software has been reported to work well on:
+
 - *Linux:* amd64, 386, arm64, arm
 - *FreeBSD:* amd64, 386
 - *Windows:* amd64, 386, arm64
@@ -75,7 +81,9 @@ Flags:
 ```
 
 ### Latency
+
 Measure the latency with the Google Cloud Zurich region with 4 HTTP pings (`-c 4`):
+
 ```
 $ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 4
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping GET
@@ -92,7 +100,9 @@ HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping GET
 round-trip min/avg/max/stddev = 28.444/29.094/29.538/0.456 ms
 ```
 
-Measure the latency with Google Cloud Zurich region with ten HTTP pings (`-c 10`), disabling socket reuse (`-K`), using a HEAD request (`-H`), and in verbose mode (`-v`):
+Measure the latency with Google Cloud Zurich region with ten HTTP pings (`-c 10`), disabling socket reuse (`-K`), using
+a HEAD request (`-H`), and in verbose mode (`-v`):
+
 ```
 $ http-ping https://europe-west6-5tkroniexa-oa.a.run.app/api/ping -c 10 -K -H --http2 -v
 HTTP-PING https://europe-west6-5tkroniexa-oa.a.run.app/api/ping HEAD
@@ -143,14 +153,18 @@ average latency contributions:
                      ├─   17.7 ms wait
                      └─    0.2 ms response ingestion
 ```
+
 _note: the latency contribution tree only covers the main steps of the HTTP exchange, thus the sum doesn't fully match._
 
 ### Throughput
+
 `http-ping` can also be used to measure the throughput given by an HTTP/S setup.
 
-_Beware, this measure generates, by design, a lot of traffic on the target, thus it might deteriorate the overall service during the time of measurement. This feature is more appropriate when you want to test your own servers._
+_Beware, this measure generates, by design, a lot of traffic on the target, thus it might deteriorate the overall
+service during the time of measurement. This feature is more appropriate when you want to test your own servers._
 
-Measure the maximum throughput to `URL-TO-TEST` by not waiting between request (`-i 0s`), by enabling throughput measurement (`-t`) and, by allocating 64 workers (`--workers 64`)
+Measure the maximum throughput to `URL-TO-TEST` by not waiting between request (`-i 0s`), by enabling throughput
+measurement (`-t`) and, by allocating 64 workers (`--workers 64`)
 
 ```shell
 > http-ping --workers 64 -i 0s -t URL-TO-TEST
@@ -173,36 +187,52 @@ queries throughput min/avg/max/stdev = 1871.5/1957.8/2037.6/59.3 queries/sec
 ## Install on Linux
 
 The [releases](https://github.com/fever-ch/http-ping/releases) are providing packages for the following systems:
+
 - `deb`: Debian, Ubuntu, ...
 - `rpm`: RedHat, CentOS, SuSE, ...
 - `apk`: Alpine
 
-n.b.: _`http-ping` uses `ca-certificates` in order to authenticate the CA signature on the server certificates in communications over HTTPS._ 
+n.b.: _`http-ping` uses `ca-certificates` in order to authenticate the CA signature on the server certificates in
+communications over HTTPS._
 
 ## Install with Homebrew (Mac/Linux)
 
-A third party repository, [fever-ch/tap](https://www.github.com/fever-ch/homebrew-tap), provides up-to-date formula to deploy `http-ping` easily on platforms supported by [Homebrew](https://brew.sh).
+A third party repository, [fever-ch/tap](https://www.github.com/fever-ch/homebrew-tap), provides up-to-date formula to
+deploy `http-ping` easily on platforms supported by [Homebrew](https://brew.sh).
 
 To install using Brew, run the following command:
+
 ```
 $ brew install fever-ch/tap/http-ping
 ```
 
 ## Install on Linux/FreeBSD/MacOS/Windows
 
-The [releases](https://github.com/fever-ch/http-ping/releases) page also provides archives that contain the binary executable file, `tar.gz` files for Linux/FreeBSD/MacOS and `zip` files for Windows.
+The [releases](https://github.com/fever-ch/http-ping/releases) page also provides archives that contain the binary
+executable file, `tar.gz` files for Linux/FreeBSD/MacOS and `zip` files for Windows.
 
 ## Use with Docker
+
 ```
 $ docker run --rm feverch/http-ping
 ```
 
-Note: images are published as `feverch/http-ping` (Central Docker registry) or `ghcr.io/fever-ch/http-ping` (Github Container registry)
-
+Note: images are published as `feverch/http-ping` (Central Docker registry) or `ghcr.io/fever-ch/http-ping` (Github
+Container registry)
 
 ## Build your own binaries
 
 You can easily build `http-ping`, if `golang` is installed on your system.
+
 ```
 $ go install fever.ch/http-ping@latest
 ```
+
+## Notes
+
+### HTTP/3 support
+
+HTTP/3 support is brought by a 3rd-party library [QUIC-Go](https://github.com/quic-go/quic-go) which APIs differs a bit
+from the Go's HTTP (`net/http`) libraries that are used for HTTP/1 and HTTP/2.
+
+Support for HTTP/3 came with version `1.2.0`, and still needs to be considered as _experimental_.
