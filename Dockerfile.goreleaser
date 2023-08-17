@@ -1,3 +1,4 @@
 FROM gcr.io/distroless/static:nonroot
+USER nobody
 COPY http-ping /
 ENTRYPOINT ["/http-ping"]
