@@ -48,8 +48,10 @@ func TestInterceptionOfHTTPRequest(t *testing.T) {
 	ctxA := WithTrace(context.Background(),
 		&ConnTrace{
 			Read: func(i int) {
+				// ignored here
 			},
 			Write: func(i int) {
+				// ignored here
 			},
 			TCPStart: func() {
 				tcpStartedA = true
@@ -62,8 +64,10 @@ func TestInterceptionOfHTTPRequest(t *testing.T) {
 	ctxB := WithTrace(ctxA,
 		&ConnTrace{
 			Read: func(i int) {
+				// ignored here
 			},
 			Write: func(i int) {
+				// ignored here
 			},
 			TCPStart: func() {
 				tcpStartedB = true

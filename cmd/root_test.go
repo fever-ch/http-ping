@@ -63,14 +63,14 @@ func commandTest(_ *testing.T, args []string) (*app.Config, []byte, error) {
 }
 
 func TestCount(t *testing.T) {
-	config, _, err := commandTest(t, []string{"-c", "123", "www.google.com"})
+	config, _, err := commandTest(t, []string{"-c", "123", "www.google.ch"})
 	if err != nil || config.Count != 123 {
 		t.Fatal("Count parameter not taken in account")
 	}
 }
 
 func TestEnforceIPv6(t *testing.T) {
-	config, _, err := commandTest(t, []string{"-6", "www.google.com"})
+	config, _, err := commandTest(t, []string{"-6", "ipv6.google.com"})
 	if err != nil && config.IPProtocol != "ip6" {
 		t.Fatal("IPv6 parameter not taken in account")
 	}
@@ -78,7 +78,7 @@ func TestEnforceIPv6(t *testing.T) {
 }
 
 func TestEnforceIPv4AndIPv6(t *testing.T) {
-	_, _, err := commandTest(t, []string{"-4", "-6", "www.google.com"})
+	_, _, err := commandTest(t, []string{"-4", "-6", "www.epfl.ch"})
 	if err == nil {
 		t.Fatal("IPv6 parameter not taken in account")
 	}
@@ -86,7 +86,7 @@ func TestEnforceIPv4AndIPv6(t *testing.T) {
 }
 
 func TestExcessOfArguments(t *testing.T) {
-	_, _, err := commandTest(t, []string{"www.google.com", "www.wikipedia.com"})
+	_, _, err := commandTest(t, []string{"www.ietf.org", "www.wikipedia.org"})
 	if err == nil {
 		t.Fatal("only one non-flag argument can we used")
 	}
