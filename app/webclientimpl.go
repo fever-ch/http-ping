@@ -233,9 +233,112 @@ func (webClient *webClientImpl) prepareReq(req *http.Request) {
 
 }
 
+type measureContext struct {
+	timerRegistry *stats.TimerRegistry
+	webClientImpl *webClientImpl
+	remoteAddr    string
+	reused        bool
+}
+
+func newMeasureContext(impl *webClientImpl) *measureContext {
+	return &measureContext{
+		timerRegistry: stats.NewTimersCollection(),
+		webClientImpl: impl,
+	}
+}
+
+func (mc *measureContext) getMeasures() *stats.MeasuresCollection {
+	return mc.timerRegistry.Measure()
+}
+
+func (mc *measureContext) getClientTrace() *httptrace.ClientTrace {
+
+	return &httptrace.ClientTrace{
+		TLSHandshakeStart: func() {
+			mc.timerRegistry.Get(stats.TLS).Start()
+		},
+
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			mc.timerRegistry.Get(stats.TLS).Stop()
+		},
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			mc.timerRegistry.Get(stats.DNS).Start()
+		},
+
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			mc.timerRegistry.Get(stats.DNS).Stop()
+		},
+
+		GetConn: func(hostPort string) {
+			mc.timerRegistry.Get(stats.Conn).Start()
+		},
+
+		GotConn: func(info httptrace.GotConnInfo) {
+			mc.remoteAddr = info.Conn.RemoteAddr().String()
+			mc.timerRegistry.Get(stats.Conn).Stop()
+			mc.timerRegistry.Get(stats.Req).Start()
+			mc.timerRegistry.Get(stats.ReqAndWait).StartForce()
+			mc.reused = info.Reused
+		},
+
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			mc.timerRegistry.Get(stats.Req).Stop()
+			mc.timerRegistry.Get(stats.Wait).Start()
+		},
+
+		GotFirstResponseByte: func() {
+			mc.timerRegistry.Get(stats.Wait).Stop()
+			mc.timerRegistry.Get(stats.ReqAndWait).Stop()
+
+			mc.timerRegistry.Get(stats.Resp).Start()
+		},
+	}
+
+}
+
+func (mc *measureContext) getConnTrace() *sockettrace.ConnTrace {
+	return &sockettrace.ConnTrace{
+		Read: func(i int) {
+			mc.webClientImpl.reads += int64(i)
+		},
+		Write: func(i int) {
+			mc.webClientImpl.writes += int64(i)
+		},
+		TCPStart: func() {
+			mc.timerRegistry.Get(stats.TCP).Start()
+		},
+		TCPEstablished: func() {
+			mc.timerRegistry.Get(stats.TCP).Stop()
+		},
+	}
+}
+
+func (mc *measureContext) ctx() context.Context {
+	return httptrace.WithClientTrace(
+		sockettrace.WithTrace(
+			context.Background(),
+			mc.getConnTrace()),
+		mc.getClientTrace())
+}
+
+func (mc *measureContext) start() {
+	mc.timerRegistry.Get(stats.Total).Start()
+	mc.timerRegistry.Get(stats.ReqAndWait).Start() // for HTTP/3 with keep-alive
+}
+
+func (mc *measureContext) startIngestion() {
+	mc.timerRegistry.Get(stats.ReqAndWait).Stop()
+	mc.timerRegistry.Get(stats.Resp).Start()
+}
+
+func (mc *measureContext) globalStop() {
+	mc.timerRegistry.Get(stats.Resp).Stop()
+	mc.timerRegistry.Get(stats.Total).Stop()
+}
+
 // DoMeasure evaluates the latency to a specific HTTP/S server
 func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
-
+	measureContext := newMeasureContext(webClient)
 	if followRedirect {
 		webClient.httpClient.CheckRedirect = webClient.checkRedirectFollow
 	} else {
@@ -257,80 +360,11 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		webClient.httpClient.Jar = jar
 	}
 
-	var reused bool
-	var remoteAddr string
-
-	timerRegistry := stats.NewTimersCollection()
-
-	clientTrace := &httptrace.ClientTrace{
-		TLSHandshakeStart: func() {
-			timerRegistry.Get(stats.TLS).Start()
-		},
-
-		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			timerRegistry.Get(stats.TLS).Stop()
-		},
-		DNSStart: func(info httptrace.DNSStartInfo) {
-			timerRegistry.Get(stats.DNS).Start()
-		},
-
-		DNSDone: func(info httptrace.DNSDoneInfo) {
-			timerRegistry.Get(stats.DNS).Stop()
-		},
-
-		GetConn: func(hostPort string) {
-			timerRegistry.Get(stats.Conn).Start()
-		},
-
-		GotConn: func(info httptrace.GotConnInfo) {
-			remoteAddr = info.Conn.RemoteAddr().String()
-			timerRegistry.Get(stats.Conn).Stop()
-			timerRegistry.Get(stats.Req).Start()
-			timerRegistry.Get(stats.ReqAndWait).StartForce()
-			reused = info.Reused
-		},
-
-		WroteRequest: func(info httptrace.WroteRequestInfo) {
-			timerRegistry.Get(stats.Req).Stop()
-			timerRegistry.Get(stats.Wait).Start()
-		},
-
-		GotFirstResponseByte: func() {
-			timerRegistry.Get(stats.Wait).Stop()
-			timerRegistry.Get(stats.ReqAndWait).Stop()
-
-			timerRegistry.Get(stats.Resp).Start()
-		},
-	}
-
-	connTrace := &sockettrace.ConnTrace{
-		Read: func(i int) {
-			atomic.AddInt64(&webClient.reads, int64(i))
-		},
-		Write: func(i int) {
-			atomic.AddInt64(&webClient.writes, int64(i))
-		},
-		TCPStart: func() {
-			timerRegistry.Get(stats.TCP).Start()
-		},
-		TCPEstablished: func() {
-			timerRegistry.Get(stats.TCP).Stop()
-		},
-	}
-
-	traceCtx :=
-		httptrace.WithClientTrace(
-			sockettrace.WithTrace(
-				context.Background(),
-				connTrace),
-			clientTrace)
-
-	req = req.WithContext(traceCtx)
+	req = req.WithContext(measureContext.ctx())
 
 	webClient.prepareReq(req)
 
-	timerRegistry.Get(stats.Total).Start()
-	timerRegistry.Get(stats.ReqAndWait).Start() // for HTTP/3 with keep-alive
+	measureContext.start()
 
 	res, err := webClient.httpClient.Do(req)
 
@@ -338,7 +372,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		return &HTTPMeasure{
 			IsFailure:          true,
 			FailureCause:       err.Error(),
-			MeasuresCollection: timerRegistry.Measure(),
+			MeasuresCollection: measureContext.getMeasures(),
 		}
 	}
 
@@ -351,25 +385,23 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	if altSvcH3 != "" && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.Http1 && !webClient.config.Http2 {
 		_, _ = fmt.Printf("   ─→     server advertised HTTP/3 endpoint, using HTTP/3\n")
 
-		return webClient.moveToHttp3(altSvcH3, timerRegistry, followRedirect)
+		return webClient.moveToHttp3(altSvcH3, measureContext.timerRegistry, followRedirect)
 	}
 
-	timerRegistry.Get(stats.ReqAndWait).Stop()
-	timerRegistry.Get(stats.Resp).Start()
+	measureContext.startIngestion()
 
 	s, err := io.Copy(io.Discard, res.Body)
 	if err != nil {
 		return &HTTPMeasure{
 			IsFailure:          true,
 			FailureCause:       "I/O error while reading payload",
-			MeasuresCollection: timerRegistry.Measure(),
+			MeasuresCollection: measureContext.getMeasures(),
 		}
 	}
 
 	_ = res.Body.Close()
 
-	timerRegistry.Get(stats.Resp).Stop()
-	timerRegistry.Get(stats.Total).Stop()
+	measureContext.globalStop()
 
 	if webClient.config.DisableKeepAlive {
 		webClient.httpClient.CloseIdleConnections()
@@ -401,6 +433,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		}
 	}
 
+	var remoteAddr = measureContext.remoteAddr
 	if remoteAddr == "" {
 		remoteAddr = webClient.runtimeConfig.ResolvedConnAddress
 	}
@@ -411,13 +444,13 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		Bytes:        s,
 		InBytes:      i,
 		OutBytes:     o,
-		SocketReused: reused,
+		SocketReused: measureContext.reused,
 		Compressed:   !res.Uncompressed,
 		TLSEnabled:   res.TLS != nil,
 		TLSVersion:   tlsVersion,
 		AltSvcH3:     altSvcH3,
 
-		MeasuresCollection: timerRegistry.Measure(),
+		MeasuresCollection: measureContext.getMeasures(),
 
 		RemoteAddr: remoteAddr,
 
