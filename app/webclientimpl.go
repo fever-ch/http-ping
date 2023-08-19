@@ -445,7 +445,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		InBytes:      i,
 		OutBytes:     o,
 		SocketReused: measureContext.reused,
-		Compressed:   !res.Uncompressed,
+		Compressed:   res.Uncompressed,
 		TLSEnabled:   res.TLS != nil,
 		TLSVersion:   tlsVersion,
 		AltSvcH3:     altSvcH3,
