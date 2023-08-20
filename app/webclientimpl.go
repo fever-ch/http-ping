@@ -233,109 +233,6 @@ func (webClient *webClientImpl) prepareReq(req *http.Request) {
 
 }
 
-type measureContext struct {
-	timerRegistry *stats.TimerRegistry
-	webClientImpl *webClientImpl
-	remoteAddr    string
-	reused        bool
-}
-
-func newMeasureContext(impl *webClientImpl) *measureContext {
-	return &measureContext{
-		timerRegistry: stats.NewTimersCollection(),
-		webClientImpl: impl,
-	}
-}
-
-func (mc *measureContext) getMeasures() *stats.MeasuresCollection {
-	return mc.timerRegistry.Measure()
-}
-
-func (mc *measureContext) getClientTrace() *httptrace.ClientTrace {
-
-	return &httptrace.ClientTrace{
-		TLSHandshakeStart: func() {
-			mc.timerRegistry.Get(stats.TLS).Start()
-		},
-
-		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			mc.timerRegistry.Get(stats.TLS).Stop()
-		},
-		DNSStart: func(info httptrace.DNSStartInfo) {
-			mc.timerRegistry.Get(stats.DNS).Start()
-		},
-
-		DNSDone: func(info httptrace.DNSDoneInfo) {
-			mc.timerRegistry.Get(stats.DNS).Stop()
-		},
-
-		GetConn: func(hostPort string) {
-			mc.timerRegistry.Get(stats.Conn).Start()
-		},
-
-		GotConn: func(info httptrace.GotConnInfo) {
-			mc.remoteAddr = info.Conn.RemoteAddr().String()
-			mc.timerRegistry.Get(stats.Conn).Stop()
-			mc.timerRegistry.Get(stats.Req).Start()
-			mc.timerRegistry.Get(stats.ReqAndWait).StartForce()
-			mc.reused = info.Reused
-		},
-
-		WroteRequest: func(info httptrace.WroteRequestInfo) {
-			mc.timerRegistry.Get(stats.Req).Stop()
-			mc.timerRegistry.Get(stats.Wait).Start()
-		},
-
-		GotFirstResponseByte: func() {
-			mc.timerRegistry.Get(stats.Wait).Stop()
-			mc.timerRegistry.Get(stats.ReqAndWait).Stop()
-
-			mc.timerRegistry.Get(stats.Resp).Start()
-		},
-	}
-
-}
-
-func (mc *measureContext) getConnTrace() *sockettrace.ConnTrace {
-	return &sockettrace.ConnTrace{
-		Read: func(i int) {
-			mc.webClientImpl.reads += int64(i)
-		},
-		Write: func(i int) {
-			mc.webClientImpl.writes += int64(i)
-		},
-		TCPStart: func() {
-			mc.timerRegistry.Get(stats.TCP).Start()
-		},
-		TCPEstablished: func() {
-			mc.timerRegistry.Get(stats.TCP).Stop()
-		},
-	}
-}
-
-func (mc *measureContext) ctx() context.Context {
-	return httptrace.WithClientTrace(
-		sockettrace.WithTrace(
-			context.Background(),
-			mc.getConnTrace()),
-		mc.getClientTrace())
-}
-
-func (mc *measureContext) start() {
-	mc.timerRegistry.Get(stats.Total).Start()
-	mc.timerRegistry.Get(stats.ReqAndWait).Start() // for HTTP/3 with keep-alive
-}
-
-func (mc *measureContext) startIngestion() {
-	mc.timerRegistry.Get(stats.ReqAndWait).Stop()
-	mc.timerRegistry.Get(stats.Resp).Start()
-}
-
-func (mc *measureContext) globalStop() {
-	mc.timerRegistry.Get(stats.Resp).Stop()
-	mc.timerRegistry.Get(stats.Total).Stop()
-}
-
 // DoMeasure evaluates the latency to a specific HTTP/S server
 func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	measureContext := newMeasureContext(webClient)
@@ -419,15 +316,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	i := atomic.SwapInt64(&webClient.reads, 0)
 	o := atomic.SwapInt64(&webClient.writes, 0)
 
-	var tlsVersion string
-	if res.TLS != nil {
-		code := int(res.TLS.Version) - 0x0301
-		if code >= 0 {
-			tlsVersion = fmt.Sprintf("TLS-1.%d", code)
-		} else {
-			tlsVersion = "SSL-3"
-		}
-	}
+	tlsVersion := extractTlsVersion(res)
 
 	var remoteAddr = measureContext.remoteAddr
 	if remoteAddr == "" {
@@ -455,6 +344,20 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		Headers:      &res.Header,
 	}
 
+}
+
+func extractTlsVersion(res *http.Response) string {
+
+	if res.TLS != nil {
+		code := int(res.TLS.Version) - 0x0301
+		if code >= 0 {
+			return fmt.Sprintf("TLS-1.%d", code)
+		} else {
+			return "SSL-3"
+		}
+	} else {
+		return "N/A"
+	}
 }
 
 func (webClient *webClientImpl) moveToHttp3(altSvcH3 string, timerRegistry *stats.TimerRegistry, followRedirect bool) *HTTPMeasure {
