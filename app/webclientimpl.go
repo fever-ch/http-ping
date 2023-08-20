@@ -246,16 +246,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	req, _ := http.NewRequest(webClient.config.Method, webClient.config.Target, nil)
 
-	if webClient.httpClient.Jar == nil || !webClient.config.KeepCookies {
-		jar, _ := cookiejar.New(nil)
-		var cookies []*http.Cookie
-		for _, c := range webClient.config.Cookies {
-			cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})
-		}
-
-		jar.SetCookies(webClient.url, cookies)
-		webClient.httpClient.Jar = jar
-	}
+	webClient.updateCookieJar()
 
 	req = req.WithContext(measureContext.ctx())
 
@@ -382,4 +373,17 @@ func (webClient *webClientImpl) moveToHttp3(altSvcH3 string, timerRegistry *stat
 		}
 	}
 	return webClient.DoMeasure(followRedirect)
+}
+
+func (webClient *webClientImpl) updateCookieJar() {
+	if webClient.httpClient.Jar == nil || !webClient.config.KeepCookies {
+		jar, _ := cookiejar.New(nil)
+		var cookies []*http.Cookie
+		for _, c := range webClient.config.Cookies {
+			cookies = append(cookies, &http.Cookie{Name: c.Name, Value: c.Value})
+		}
+
+		jar.SetCookies(webClient.url, cookies)
+		webClient.httpClient.Jar = jar
+	}
 }
