@@ -40,6 +40,7 @@ type httpPingImpl struct {
 type httpPingTestVersion struct {
 	baseConfig      *Config
 	advertisedHttp3 bool
+	logger          *standardLogger
 }
 
 func (h *httpPingTestVersion) Run() error {
@@ -55,14 +56,14 @@ func (h *httpPingTestVersion) Run() error {
 		c.Http3 = true
 	})
 
-	println("Checking available versions of HTTP protocol on " + h.baseConfig.Target)
-	println()
-	println(" - v1  " + <-http1)
-	println(" - v2  " + <-http2)
-	println(" - v3  " + <-http3)
-	println()
+	_, _ = fmt.Fprintf(h.logger.stdout, "Checking available versions of HTTP protocol on "+h.baseConfig.Target)
+	_, _ = fmt.Fprintf(h.logger.stdout, "\n")
+	_, _ = fmt.Fprintf(h.logger.stdout, " - v1  "+<-http1+"\n")
+	_, _ = fmt.Fprintf(h.logger.stdout, " - v2  "+<-http2+"\n")
+	_, _ = fmt.Fprintf(h.logger.stdout, " - v3  "+<-http3+"\n")
+	_, _ = fmt.Fprintf(h.logger.stdout, "\n")
 	if h.advertisedHttp3 {
-		println("   (*) advertises HTTP/3 availability in HTTP headers")
+		_, _ = fmt.Fprintf(h.logger.stdout, "   (*) advertises HTTP/3 availability in HTTP headers\n")
 	}
 	return nil
 }
@@ -99,12 +100,6 @@ func (h *httpPingTestVersion) checkHttp(prep func(*Config)) <-chan string {
 // NewHTTPPing builds a new instance of HTTPPing or error if something goes wrong
 func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 
-	if config.TestVersion {
-		return &httpPingTestVersion{
-			baseConfig: config,
-		}, nil
-	}
-
 	runtimeConfig := &RuntimeConfig{
 		RedirectCallBack: func(url string) {
 			_, _ = fmt.Fprintf(stdout, "   ─→     redirected to %s\n", url)
@@ -125,6 +120,13 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 		logger = newVerboseLogger(config, stdout, pinger)
 	} else {
 		logger = newStandardLogger(config, stdout, pinger)
+	}
+
+	if config.TestVersion {
+		return &httpPingTestVersion{
+			baseConfig: config,
+			logger:     newStandardLogger(config, stdout, pinger),
+		}, nil
 	}
 
 	return &httpPingImpl{
@@ -167,7 +169,8 @@ func (httpPingImpl *httpPingImpl) Run() error {
 				loop = false
 			} else {
 				if first {
-					println()
+					_, _ = fmt.Fprintf(httpPingImpl.stdout, "\n")
+
 					first = false
 				}
 

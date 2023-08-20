@@ -95,7 +95,6 @@ func (mr *MeasuresCollection) Append(other *MeasuresCollection) {
 			}
 		}
 	}
-	println()
 }
 
 func (mr *MeasuresCollection) Divide(successes int64) {

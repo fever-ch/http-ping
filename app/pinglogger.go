@@ -178,7 +178,7 @@ func (logger *verboseLogger) onMeasure(measure *HTTPMeasure) {
 	_, _ = fmt.Fprintf(logger.stdout, "          tls version=%s\n", measure.TLSVersion)
 	logger.measureSum.MeasuresCollection.Append(measure.MeasuresCollection)
 
-	_, _ = fmt.Fprintf(logger.stdout, "\n")
+	_, _ = fmt.Fprintf(logger.stdout, "\n\n")
 
 	_, _ = fmt.Fprintf(logger.stdout, "          latency contributions:\n")
 
