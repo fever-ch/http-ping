@@ -376,16 +376,12 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		}
 	}
 
-	altSvcH3 := ""
+	altSvcH3 := checkAltSvcH3Header(res.Header)
 
-	if val := checkAltSvcH3Header(res.Header); val != nil {
-		altSvcH3 = *val
-	}
-
-	if altSvcH3 != "" && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.Http1 && !webClient.config.Http2 {
+	if altSvcH3 != nil && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.Http1 && !webClient.config.Http2 {
 		_, _ = fmt.Printf("   ─→     server advertised HTTP/3 endpoint, using HTTP/3\n")
 
-		return webClient.moveToHttp3(altSvcH3, measureContext.timerRegistry, followRedirect)
+		return webClient.moveToHttp3(*altSvcH3, measureContext.timerRegistry, followRedirect)
 	}
 
 	measureContext.startIngestion()

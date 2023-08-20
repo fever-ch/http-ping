@@ -83,7 +83,7 @@ func (h *httpPingTestVersion) checkHttp(prep func(*Config)) <-chan string {
 		http3Advertisement := ""
 
 		if m != nil && !m.IsFailure {
-			if m.AltSvcH3 != "" {
+			if m.AltSvcH3 != nil {
 				h.advertisedHttp3 = true
 				http3Advertisement = " (*)"
 			}
@@ -155,9 +155,9 @@ func (httpPingImpl *httpPingImpl) Run() error {
 
 	loop := true
 	first := true
+
 	for loop {
 		select {
-
 		case <-tickerChan:
 			m := throughputMeasurer.Measure()
 			httpPingImpl.logger.onTick(m)
@@ -172,12 +172,12 @@ func (httpPingImpl *httpPingImpl) Run() error {
 				}
 
 				httpPingImpl.logger.onMeasure(measure)
+				if config.Throughput && !tpuStarted {
+					throughputMeasurer.Measure()
+					tickerChan = (time.NewTicker(config.ThroughputRefresh)).C
+					tpuStarted = true
+				}
 				if !measure.IsFailure {
-					if config.Throughput && !tpuStarted {
-						throughputMeasurer.Measure()
-						tickerChan = (time.NewTicker(config.ThroughputRefresh)).C
-						tpuStarted = true
-					}
 					throughputMeasurer.Count(measure.MeasuresCollection.Get(stats.Total))
 
 					if config.AudibleBell {
@@ -185,6 +185,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 					}
 				}
 			}
+
 		case <-ic:
 			loop = false
 		}

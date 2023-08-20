@@ -37,7 +37,7 @@ type HTTPMeasure struct {
 	RemoteAddr   string
 	TLSEnabled   bool
 	TLSVersion   string
-	AltSvcH3     string
+	AltSvcH3     *string
 
 	MeasuresCollection *stats.MeasuresCollection
 
