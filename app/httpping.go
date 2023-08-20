@@ -149,9 +149,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 
 	measuresChannel := httpPingImpl.pinger.Ping()
 
-	ticker := time.NewTicker(5 * time.Second)
 	tickerChan := make(<-chan time.Time)
-	ticker.Stop()
 	tpuStarted := false
 	throughputMeasurer := newThroughputMeasurer()
 
