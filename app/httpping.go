@@ -56,14 +56,14 @@ func (h *httpPingTestVersion) Run() error {
 		c.Http3 = true
 	})
 
-	_, _ = fmt.Fprintf(h.logger.stdout, "Checking available versions of HTTP protocol on "+h.baseConfig.Target)
-	_, _ = fmt.Fprintf(h.logger.stdout, "\n")
-	_, _ = fmt.Fprintf(h.logger.stdout, " - v1  "+<-http1+"\n")
-	_, _ = fmt.Fprintf(h.logger.stdout, " - v2  "+<-http2+"\n")
-	_, _ = fmt.Fprintf(h.logger.stdout, " - v3  "+<-http3+"\n")
-	_, _ = fmt.Fprintf(h.logger.stdout, "\n")
+	_, _ = h.logger.Printf("Checking available versions of HTTP protocol on " + h.baseConfig.Target)
+	_, _ = h.logger.Printf("\n")
+	_, _ = h.logger.Printf(" - v1  " + <-http1 + "\n")
+	_, _ = h.logger.Printf(" - v2  " + <-http2 + "\n")
+	_, _ = h.logger.Printf(" - v3  " + <-http3 + "\n")
+	_, _ = h.logger.Printf("\n")
 	if h.advertisedHttp3 {
-		_, _ = fmt.Fprintf(h.logger.stdout, "   (*) advertises HTTP/3 availability in HTTP headers\n")
+		_, _ = h.logger.Printf("   (*) advertises HTTP/3 availability in HTTP headers\n")
 	}
 	return nil
 }
@@ -141,13 +141,12 @@ func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
 func (httpPingImpl *httpPingImpl) Run() error {
 
 	config := httpPingImpl.config
-	stdout := httpPingImpl.stdout
 
 	ic := make(chan os.Signal, 1)
 
 	signal.Notify(ic, os.Interrupt)
 
-	_, _ = fmt.Fprintf(stdout, "HTTP-PING %s %s\n\n", httpPingImpl.pinger.URL(), config.Method)
+	_, _ = httpPingImpl.logger.Printf("HTTP-PING %s %s\n\n", httpPingImpl.pinger.URL(), config.Method)
 
 	measuresChannel := httpPingImpl.pinger.Ping()
 
@@ -169,7 +168,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 				loop = false
 			} else {
 				if first {
-					_, _ = fmt.Fprintf(httpPingImpl.stdout, "\n")
+					_, _ = httpPingImpl.logger.Printf("\n")
 
 					first = false
 				}
@@ -183,9 +182,7 @@ func (httpPingImpl *httpPingImpl) Run() error {
 				if !measure.IsFailure {
 					throughputMeasurer.Count(measure.MeasuresCollection.Get(stats.Total))
 
-					if config.AudibleBell {
-						_, _ = fmt.Fprintf(stdout, "\a")
-					}
+					httpPingImpl.logger.bell()
 				}
 			}
 
