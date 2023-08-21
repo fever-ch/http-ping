@@ -1,4 +1,4 @@
-// Copyright 2022 Raphaël P. Barazzutti
+// Copyright 2022-2023 - Raphaël P. Barazzutti
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
