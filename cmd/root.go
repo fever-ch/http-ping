@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package cmd provides parsing of command-line parameters
 package cmd
 
 import (

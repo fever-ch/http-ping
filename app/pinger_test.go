@@ -57,7 +57,7 @@ func (webClientBuilderMock *webClientBuilderMock) URL() string {
 	return "https://www.google.com"
 }
 
-func (webClientBuilderMock *webClientBuilderMock) SetURL(url *url.URL) {
+func (webClientBuilderMock *webClientBuilderMock) SetURL(*url.URL) {
 	// not needed
 }
 

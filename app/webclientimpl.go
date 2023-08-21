@@ -115,7 +115,7 @@ func newHTTP2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 		return sockettrace.NewSocketTrace(ctx, dialer, network, ipaddr)
 	}
 
-	var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
+	var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper
 
 	if webClient.config.HTTP1 {
 		tlsNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
@@ -345,21 +345,19 @@ func extractTLSVersion(res *http.Response) string {
 		code := int(res.TLS.Version) - 0x0301
 		if code >= 0 {
 			return fmt.Sprintf("TLS-1.%d", code)
-		} else {
-			return "SSL-3"
 		}
-	} else {
-		return "N/A"
+		return "SSL-3"
+
 	}
+	return "N/A"
+
 }
 
 func (webClient *webClientImpl) moveToHTTP3(altSvcH3 string, timerRegistry *stats.TimerRegistry, followRedirect bool) *HTTPMeasure {
 
-	if altSvcH3 == ":443" {
-		// nothing
-	} else if strings.HasPrefix(altSvcH3, ":") {
+	if strings.HasPrefix(altSvcH3, ":") {
 		webClient.url.Host = webClient.url.Host + altSvcH3
-	} else {
+	} else if altSvcH3 != ":443" {
 		webClient.url.Host = altSvcH3
 	}
 

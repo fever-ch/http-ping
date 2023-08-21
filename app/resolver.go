@@ -91,7 +91,7 @@ func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, 
 	} else if network == "ip6" {
 		return resolveWithSpecificServerQtype(dns.TypeAAAA, server, host)
 	} else {
-		var ipv4Address []*net.IP = nil
+		var ipv4Address []*net.IP
 
 		answersChan := make(chan *resolveAnswer)
 

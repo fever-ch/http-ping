@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package sockettrace provides tracing mechanisms
 package sockettrace
 
 import (

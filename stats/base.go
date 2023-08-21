@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package stats provides simple and basic functions for statistics
 package stats
 
 import "math"
