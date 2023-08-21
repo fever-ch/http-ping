@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// entrypoint package of the app
 package main
 
 import (
