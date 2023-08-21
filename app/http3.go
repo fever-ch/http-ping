@@ -28,7 +28,7 @@ import (
 	"strings"
 )
 
-func newHttp3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
+func newHTTP3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 	if config.Method == http.MethodGet {
 		config.Method = http3.MethodGet0RTT
 	}

@@ -68,7 +68,7 @@ func (webClient *webClientImpl) updateConnTarget() {
 	}
 }
 
-func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
+func newHTTP2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 
 	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig, logger: w.logger}
 	parsedURL, err := url.Parse(config.Target)
@@ -117,7 +117,7 @@ func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 
 	var tlsNextProto map[string]func(string, *tls.Conn) http.RoundTripper = nil
 
-	if webClient.config.Http1 {
+	if webClient.config.HTTP1 {
 		tlsNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
 	}
 
@@ -129,7 +129,7 @@ func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 			InsecureSkipVerify: config.NoCheckCertificate,
 		},
 		DisableCompression: config.DisableCompression,
-		ForceAttemptHTTP2:  !webClient.config.Http1,
+		ForceAttemptHTTP2:  !webClient.config.HTTP1,
 		MaxIdleConns:       10,
 		DisableKeepAlives:  config.DisableKeepAlive,
 		IdleConnTimeout:    config.Interval + config.Wait,
@@ -139,10 +139,10 @@ func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 
 func newTransport(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 
-	if config.Http3 {
-		return newHttp3RoundTripper(config, runtimeConfig, w)
+	if config.HTTP3 {
+		return newHTTP3RoundTripper(config, runtimeConfig, w)
 	}
-	return newHttp2RoundTripper(config, runtimeConfig, w)
+	return newHTTP2RoundTripper(config, runtimeConfig, w)
 }
 
 func newWebClient(config *Config, runtimeConfig *RuntimeConfig, logger ConsoleLogger) (*webClientImpl, error) {
@@ -267,11 +267,11 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 	altSvcH3 := checkAltSvcH3Header(res.Header)
 
-	if !strings.HasPrefix(req.RequestURI, "http://") && altSvcH3 != nil && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.Http1 && !webClient.config.Http2 {
+	if !strings.HasPrefix(req.RequestURI, "http://") && altSvcH3 != nil && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.HTTP1 && !webClient.config.HTTP2 {
 
 		webClient.logger.Printf("   ─→     server advertised HTTP/3 endpoint, using HTTP/3\n")
 
-		return webClient.moveToHttp3(*altSvcH3, measureContext.timerRegistry, followRedirect)
+		return webClient.moveToHTTP3(*altSvcH3, measureContext.timerRegistry, followRedirect)
 	}
 
 	measureContext.startIngestion()
@@ -301,7 +301,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 		failureCause = "Server-side error"
 	}
 
-	if strings.HasPrefix(res.Proto, "HTTP/1.") && webClient.config.Http2 {
+	if strings.HasPrefix(res.Proto, "HTTP/1.") && webClient.config.HTTP2 {
 		failed = true
 		failureCause = "HTTP/2 not supported by server"
 	}
@@ -309,7 +309,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	i := atomic.SwapInt64(&webClient.reads, 0)
 	o := atomic.SwapInt64(&webClient.writes, 0)
 
-	tlsVersion := extractTlsVersion(res)
+	tlsVersion := extractTLSVersion(res)
 
 	var remoteAddr = measureContext.remoteAddr
 	if remoteAddr == "" {
@@ -339,7 +339,7 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 
 }
 
-func extractTlsVersion(res *http.Response) string {
+func extractTLSVersion(res *http.Response) string {
 
 	if res.TLS != nil {
 		code := int(res.TLS.Version) - 0x0301
@@ -353,7 +353,7 @@ func extractTlsVersion(res *http.Response) string {
 	}
 }
 
-func (webClient *webClientImpl) moveToHttp3(altSvcH3 string, timerRegistry *stats.TimerRegistry, followRedirect bool) *HTTPMeasure {
+func (webClient *webClientImpl) moveToHTTP3(altSvcH3 string, timerRegistry *stats.TimerRegistry, followRedirect bool) *HTTPMeasure {
 
 	if altSvcH3 == ":443" {
 		// nothing
@@ -364,7 +364,7 @@ func (webClient *webClientImpl) moveToHttp3(altSvcH3 string, timerRegistry *stat
 	}
 
 	c := *webClient.config
-	c.Http3 = true
+	c.HTTP3 = true
 	err := webClient.update(&c, webClient.runtimeConfig)
 
 	if err != nil {

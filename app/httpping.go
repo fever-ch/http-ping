@@ -36,21 +36,21 @@ type httpPingImpl struct {
 
 type httpPingTestVersion struct {
 	baseConfig      *Config
-	advertisedHttp3 bool
+	advertisedHTTP3 bool
 	logger          *standardLogger
 }
 
 func (h *httpPingTestVersion) Run() error {
-	http1 := h.checkHttp(func(c *Config) {
-		c.Http1 = true
+	http1 := h.checkHTTP(func(c *Config) {
+		c.HTTP1 = true
 	})
 
-	http2 := h.checkHttp(func(c *Config) {
-		c.Http2 = true
+	http2 := h.checkHTTP(func(c *Config) {
+		c.HTTP2 = true
 	})
 
-	http3 := h.checkHttp(func(c *Config) {
-		c.Http3 = true
+	http3 := h.checkHTTP(func(c *Config) {
+		c.HTTP3 = true
 	})
 
 	_, _ = h.logger.Printf("Checking available versions of HTTP protocol on " + h.baseConfig.Target)
@@ -59,19 +59,19 @@ func (h *httpPingTestVersion) Run() error {
 	_, _ = h.logger.Printf(" - v2  " + <-http2 + "\n")
 	_, _ = h.logger.Printf(" - v3  " + <-http3 + "\n")
 	_, _ = h.logger.Printf("\n")
-	if h.advertisedHttp3 {
+	if h.advertisedHTTP3 {
 		_, _ = h.logger.Printf("   (*) advertises HTTP/3 availability in HTTP headers\n")
 	}
 	return nil
 }
 
-func (h *httpPingTestVersion) checkHttp(prep func(*Config)) <-chan string {
+func (h *httpPingTestVersion) checkHTTP(prep func(*Config)) <-chan string {
 	r := make(chan string)
 
 	go func() {
 		configCopy := *h.baseConfig
 
-		configCopy.Http3 = false
+		configCopy.HTTP3 = false
 		prep(&configCopy)
 
 		rc := RuntimeConfig{}
@@ -82,7 +82,7 @@ func (h *httpPingTestVersion) checkHttp(prep func(*Config)) <-chan string {
 
 		if m != nil && !m.IsFailure {
 			if m.AltSvcH3 != nil {
-				h.advertisedHttp3 = true
+				h.advertisedHTTP3 = true
 				http3Advertisement = " (*)"
 			}
 

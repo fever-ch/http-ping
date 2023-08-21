@@ -57,9 +57,9 @@ type Config struct {
 	Referrer           string
 	AuthUsername       string
 	AuthPassword       string
-	Http1              bool
-	Http2              bool
-	Http3              bool
+	HTTP1              bool
+	HTTP2              bool
+	HTTP3              bool
 	FullDNS            bool
 	DNSServer          string
 	CacheDNSRequests   bool
