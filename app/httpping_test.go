@@ -19,16 +19,25 @@ package app
 import (
 	"bytes"
 	"fever.ch/http-ping/stats"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
 )
 
+type consoleLoggerMock struct {
+	b io.Writer
+}
+
+func (logger *consoleLoggerMock) Printf(format string, a ...any) (int, error) {
+	return fmt.Fprintf(logger.b, format, a...)
+}
+
 type PingerMock struct{}
 
 func TestHTTPPing(t *testing.T) {
 	b := bytes.NewBufferString("")
-	instance, _ := NewHTTPPing(&Config{Count: 10}, b)
+	instance, _ := NewHTTPPing(&Config{Count: 10}, &consoleLoggerMock{b: b})
 	instance.(*httpPingImpl).pinger = &PingerMock{}
 	_ = instance.Run()
 

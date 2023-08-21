@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"io"
 	"math"
 	"net"
 	"net/http"
@@ -56,7 +55,7 @@ type extraConfig struct {
 type runner struct {
 	config   *app.Config
 	xp       *extraConfig
-	appLogic func(config *app.Config, stdout io.Writer) (app.HTTPPing, error)
+	appLogic func(config *app.Config, consoleLogger app.ConsoleLogger) (app.HTTPPing, error)
 	cmd      *cobra.Command
 	args     []string
 }
@@ -77,7 +76,7 @@ func (runner *runner) run() error {
 		}
 	}
 
-	instance, err := runner.appLogic(runner.config, runner.cmd.OutOrStdout())
+	instance, err := runner.appLogic(runner.config, app.NewConsoleCobraLogger(runner.cmd))
 	if err != nil {
 		return err
 	}
@@ -210,7 +209,7 @@ func splitPair(str string) (string, string, error) {
 	return "", "", fmt.Errorf("format should be \"key=value\", where key is a non-empty string of alphanumberic characters and value any string, illegal format: \"%s\"", str)
 }
 
-func runAndError(config *app.Config, xp *extraConfig, appLogic func(config *app.Config, stdout io.Writer) (app.HTTPPing, error)) func(cmd *cobra.Command, args []string) error {
+func runAndError(config *app.Config, xp *extraConfig, appLogic func(config *app.Config, consoleLogger app.ConsoleLogger) (app.HTTPPing, error)) func(cmd *cobra.Command, args []string) error {
 
 	return func(cmd *cobra.Command, args []string) error {
 		r := runner{appLogic: appLogic, config: config, xp: xp, cmd: cmd, args: args}
@@ -218,7 +217,7 @@ func runAndError(config *app.Config, xp *extraConfig, appLogic func(config *app.
 	}
 }
 
-func prepareRootCmd(appLogic func(config *app.Config, stdout io.Writer) (app.HTTPPing, error)) *cobra.Command {
+func prepareRootCmd(appLogic func(config *app.Config, consoleLogger app.ConsoleLogger) (app.HTTPPing, error)) *cobra.Command {
 
 	var config = &app.Config{}
 

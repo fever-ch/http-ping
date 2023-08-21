@@ -26,6 +26,7 @@ type throughputMeasurer struct {
 	ts       time.Time
 	counter  uint64
 	duration stats.Measure
+	logger   *PingLogger
 }
 
 type throughputMeasure struct {

@@ -37,11 +37,12 @@ type webClientBuilderImpl struct {
 	runtimeConfig *RuntimeConfig
 	url           *url.URL
 	resolver      *resolver
+	logger        ConsoleLogger
 }
 
 // NewWebClientBuilder builds a new instance of webClientImpl which will provides functions for Http-Ping
-func NewWebClientBuilder(config *Config, runtimeConfig *RuntimeConfig) (WebClientBuilder, error) {
-	webClient := webClientBuilderImpl{config: config, runtimeConfig: runtimeConfig}
+func NewWebClientBuilder(config *Config, runtimeConfig *RuntimeConfig, logger ConsoleLogger) (WebClientBuilder, error) {
+	webClient := webClientBuilderImpl{config: config, runtimeConfig: runtimeConfig, logger: logger}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
 		return nil, err
@@ -66,7 +67,7 @@ func (webClientBuilder *webClientBuilderImpl) GetURL() *url.URL {
 }
 
 func (webClientBuilder *webClientBuilderImpl) NewInstance() WebClient {
-	w, _ := newWebClient(webClientBuilder.config, webClientBuilder.runtimeConfig)
+	w, _ := newWebClient(webClientBuilder.config, webClientBuilder.runtimeConfig, webClientBuilder.logger)
 
 	w.url = webClientBuilder.url
 	w.updateConnTarget()

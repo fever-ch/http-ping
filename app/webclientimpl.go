@@ -40,6 +40,7 @@ type webClientImpl struct {
 	runtimeConfig *RuntimeConfig
 	url           *url.URL
 	resolver      *resolver
+	logger        ConsoleLogger
 
 	writes int64
 	reads  int64
@@ -69,7 +70,7 @@ func (webClient *webClientImpl) updateConnTarget() {
 
 func newHttp2RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl) (http.RoundTripper, error) {
 
-	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig}
+	webClient := webClientImpl{config: config, runtimeConfig: runtimeConfig, logger: w.logger}
 	parsedURL, err := url.Parse(config.Target)
 	if err != nil {
 		return nil, err
@@ -144,8 +145,8 @@ func newTransport(config *Config, runtimeConfig *RuntimeConfig, w *webClientImpl
 	return newHttp2RoundTripper(config, runtimeConfig, w)
 }
 
-func newWebClient(config *Config, runtimeConfig *RuntimeConfig) (*webClientImpl, error) {
-	webClient := &webClientImpl{}
+func newWebClient(config *Config, runtimeConfig *RuntimeConfig, logger ConsoleLogger) (*webClientImpl, error) {
+	webClient := &webClientImpl{logger: logger}
 
 	err := webClient.update(config, runtimeConfig)
 
@@ -267,7 +268,8 @@ func (webClient *webClientImpl) DoMeasure(followRedirect bool) *HTTPMeasure {
 	altSvcH3 := checkAltSvcH3Header(res.Header)
 
 	if !strings.HasPrefix(req.RequestURI, "http://") && altSvcH3 != nil && !strings.HasPrefix(res.Proto, "HTTP/3") && !webClient.config.Http1 && !webClient.config.Http2 {
-		_, _ = fmt.Printf("   ─→     server advertised HTTP/3 endpoint, using HTTP/3\n")
+
+		webClient.logger.Printf("   ─→     server advertised HTTP/3 endpoint, using HTTP/3\n")
 
 		return webClient.moveToHttp3(*altSvcH3, measureContext.timerRegistry, followRedirect)
 	}

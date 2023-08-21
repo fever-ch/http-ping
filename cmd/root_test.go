@@ -33,7 +33,7 @@ func (httpPingMock *httpPingMock) Run() error {
 	return nil
 }
 
-func (httpPingMockBuilder *httpPingMockBuilder) newHTTPPingMock(config *app.Config, _ io.Writer) (app.HTTPPing, error) {
+func (httpPingMockBuilder *httpPingMockBuilder) newHTTPPingMock(config *app.Config, _ app.ConsoleLogger) (app.HTTPPing, error) {
 	httpPingMockBuilder.config = config
 	return &httpPingMock{}, nil
 }

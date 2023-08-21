@@ -59,13 +59,13 @@ type pingerImpl struct {
 }
 
 // NewPinger builds a new pingerImpl
-func NewPinger(config *Config, runtimeConfig *RuntimeConfig) (Pinger, error) {
+func NewPinger(config *Config, runtimeConfig *RuntimeConfig, logger ConsoleLogger) (Pinger, error) {
 
 	pinger := pingerImpl{}
 
 	pinger.config = config
 
-	client, err := NewWebClientBuilder(config, runtimeConfig)
+	client, err := NewWebClientBuilder(config, runtimeConfig, logger)
 	if err != nil {
 		return nil, fmt.Errorf("%s (%s)", err, config.IPProtocol)
 	}
@@ -89,7 +89,6 @@ func (pinger *pingerImpl) Ping() <-chan *HTTPMeasure {
 		i := pinger.clientBuilder.NewInstance()
 		i.DoMeasure(true)
 		pinger.clientBuilder.SetURL(i.GetURL())
-
 	}
 
 	for i := 0; i < pinger.config.Workers; i++ {

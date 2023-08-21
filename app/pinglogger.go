@@ -18,13 +18,11 @@ package app
 
 import (
 	"fever.ch/http-ping/stats"
-	"fmt"
-	"io"
 	"strings"
 	"time"
 )
 
-type logger interface {
+type PingLogger interface {
 	onMeasure(httpMeasure *HTTPMeasure)
 	onTick(measure throughputMeasure)
 	onClose()
@@ -41,18 +39,18 @@ type measures struct {
 
 type quietLogger struct {
 	config             *Config
-	stdout             io.Writer
+	consoleLogger      ConsoleLogger
 	pinger             Pinger
 	measures           measures
 	throughputMeasures []throughputMeasure
 }
 
-func newQuietLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
-	return &quietLogger{config: config, stdout: stdout, pinger: pinger}
+func newQuietLogger(config *Config, consoleLogger ConsoleLogger, pinger Pinger) PingLogger {
+	return &quietLogger{config: config, consoleLogger: consoleLogger, pinger: pinger}
 }
 
 func (logger *quietLogger) Printf(format string, a ...any) (int, error) {
-	return fmt.Fprintf(logger.stdout,format, a...)
+	return logger.consoleLogger.Printf(format, a...)
 }
 
 func (logger *quietLogger) onMeasure(m *HTTPMeasure) {
@@ -121,8 +119,8 @@ type standardLogger struct {
 	quietLogger
 }
 
-func newStandardLogger(config *Config, stdout io.Writer, pinger Pinger) *standardLogger {
-	return &standardLogger{quietLogger{config: config, stdout: stdout, pinger: pinger}}
+func newStandardLogger(config *Config, consoleLogger ConsoleLogger, pinger Pinger) *standardLogger {
+	return &standardLogger{quietLogger{config: config, consoleLogger: consoleLogger, pinger: pinger}}
 }
 
 func (logger *standardLogger) onMeasure(measure *HTTPMeasure) {
@@ -140,7 +138,7 @@ func (logger *standardLogger) onMeasure(measure *HTTPMeasure) {
 
 func (logger *standardLogger) onTick(m throughputMeasure) {
 	logger.quietLogger.onTick(m)
-	fmt.Printf("          throughput: %s queries/sec, average latency: %.1f ms\n", m.String(), m.queriesDuration.ToFloat(time.Microsecond)/float64(1000*m.count))
+	logger.Printf("          throughput: %s queries/sec, average latency: %.1f ms\n", m.String(), m.queriesDuration.ToFloat(time.Microsecond)/float64(1000*m.count))
 }
 
 func (logger *standardLogger) onClose() {
@@ -160,9 +158,9 @@ func (logger *quietLogger) bell() {
 	}
 }
 
-func newVerboseLogger(config *Config, stdout io.Writer, pinger Pinger) logger {
+func newVerboseLogger(config *Config, consoleLogger ConsoleLogger, pinger Pinger) PingLogger {
 	return &verboseLogger{
-		standardLogger: *newStandardLogger(config, stdout, pinger),
+		standardLogger: *newStandardLogger(config, consoleLogger, pinger),
 		measureSum: &HTTPMeasure{
 			MeasuresCollection: stats.NewMeasureRegistry(),
 		},

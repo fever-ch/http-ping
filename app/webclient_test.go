@@ -42,14 +42,14 @@ func TestWithEmbeddedWebServer(t *testing.T) {
 	var webClient WebClientBuilder
 	var measure *HTTPMeasure
 
-	webClient, _ = NewWebClientBuilder(&Config{Target: fmt.Sprintf("%s/500", url), NoCheckCertificate: true}, &RuntimeConfig{})
+	webClient, _ = NewWebClientBuilder(&Config{Target: fmt.Sprintf("%s/500", url), NoCheckCertificate: true}, &RuntimeConfig{}, nil)
 	measure = webClient.NewInstance().DoMeasure(false)
 
 	if !measure.IsFailure || measure.StatusCode != 500 {
 		t.Errorf("Request to server should have failed, 500")
 	}
 
-	webClient, _ = NewWebClientBuilder(&Config{Target: fmt.Sprintf("%s/200", url), NoCheckCertificate: true}, &RuntimeConfig{})
+	webClient, _ = NewWebClientBuilder(&Config{Target: fmt.Sprintf("%s/200", url), NoCheckCertificate: true}, &RuntimeConfig{}, nil)
 	measure = webClient.NewInstance().DoMeasure(false)
 
 	if measure.IsFailure || measure.StatusCode != 200 {

@@ -18,8 +18,6 @@ package app
 
 import (
 	"fever.ch/http-ping/stats"
-	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"time"
@@ -32,9 +30,8 @@ type HTTPPing interface {
 
 type httpPingImpl struct {
 	config *Config
-	stdout io.Writer
 	pinger Pinger
-	logger logger
+	logger PingLogger
 }
 
 type httpPingTestVersion struct {
@@ -78,7 +75,7 @@ func (h *httpPingTestVersion) checkHttp(prep func(*Config)) <-chan string {
 		prep(&configCopy)
 
 		rc := RuntimeConfig{}
-		wc, _ := newWebClient(&configCopy, &rc)
+		wc, _ := newWebClient(&configCopy, &rc, h.logger)
 		m := wc.DoMeasure(false)
 
 		http3Advertisement := ""
@@ -98,40 +95,39 @@ func (h *httpPingTestVersion) checkHttp(prep func(*Config)) <-chan string {
 }
 
 // NewHTTPPing builds a new instance of HTTPPing or error if something goes wrong
-func NewHTTPPing(config *Config, stdout io.Writer) (HTTPPing, error) {
+func NewHTTPPing(config *Config, consoleLogger ConsoleLogger) (HTTPPing, error) {
 
 	runtimeConfig := &RuntimeConfig{
 		RedirectCallBack: func(url string) {
-			_, _ = fmt.Fprintf(stdout, "   ─→     redirected to %s\n", url)
+			_, _ = consoleLogger.Printf("   ─→     redirected to %s\n", url)
 		},
 	}
 
-	pinger, err := NewPinger(config, runtimeConfig)
+	pinger, err := NewPinger(config, runtimeConfig, consoleLogger)
 
 	if err != nil {
 		return nil, err
 	}
 
-	var logger logger
+	var logger PingLogger
 
 	if config.LogLevel == 0 {
-		logger = newQuietLogger(config, stdout, pinger)
+		logger = newQuietLogger(config, consoleLogger, pinger)
 	} else if config.LogLevel == 2 {
-		logger = newVerboseLogger(config, stdout, pinger)
+		logger = newVerboseLogger(config, consoleLogger, pinger)
 	} else {
-		logger = newStandardLogger(config, stdout, pinger)
+		logger = newStandardLogger(config, consoleLogger, pinger)
 	}
 
 	if config.TestVersion {
 		return &httpPingTestVersion{
 			baseConfig: config,
-			logger:     newStandardLogger(config, stdout, pinger),
+			logger:     newStandardLogger(config, consoleLogger, pinger),
 		}, nil
 	}
 
 	return &httpPingImpl{
 		config: config,
-		stdout: stdout,
 		pinger: pinger,
 		logger: logger,
 	}, nil
