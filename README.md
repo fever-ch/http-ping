@@ -47,6 +47,7 @@ Flags:
       --conn-target string            force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)
       --cookie stringArray            add one or more cookies, in the form name=value
   -c, --count int                     define the number of request to be sent (default unlimited)
+      --detect-versions               detect HTTP protocol versions available on target
       --disable-compression           the client will not request the remote server to compress answers (hence it might actually do it)
   -K, --disable-keepalive             disable keep-alive feature
       --dns-cache                     cache DNS requests
@@ -57,7 +58,6 @@ Flags:
   -H, --head                          perform HTTP HEAD requests instead of GETs
       --header stringArray            add one or more header, in the form name=value
   -h, --help                          help for http-ping
-      --http-versions                 detect HTTP protocol versions available on target
   -1, --http1                         use the HTTP/1 protocol
   -2, --http2                         use the HTTP/2 protocol
   -3, --http3                         use the HTTP/3 protocol

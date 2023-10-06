@@ -307,7 +307,7 @@ func prepareRootCmd(appLogic func(config *app.Config, consoleLogger app.ConsoleL
 
 	rootCmd.Flags().DurationVarP(&config.ThroughputRefresh, "throughput-refresh", "T", 5*time.Second, "sampling time for measuring throughput")
 
-	rootCmd.Flags().BoolVarP(&config.TestVersion, "http-versions", "", false, "detect HTTP protocol versions available on target")
+	rootCmd.Flags().BoolVarP(&config.TestVersion, "detect-versions", "", false, "detect HTTP protocol versions available on target")
 
 	return rootCmd
 }
