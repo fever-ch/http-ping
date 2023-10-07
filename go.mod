@@ -3,6 +3,7 @@ module fever.ch/http-ping
 go 1.21
 
 require (
+	github.com/StackExchange/wmi v1.2.1
 	github.com/domainr/dnsr v0.0.0-20230929082003-07252beb33b3
 	github.com/miekg/dns v1.1.56
 	github.com/quic-go/quic-go v0.39.0
@@ -12,7 +13,6 @@ require (
 )
 
 require (
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98 // indirect
