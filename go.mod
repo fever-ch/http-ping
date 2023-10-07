@@ -12,6 +12,8 @@ require (
 )
 
 require (
+	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
