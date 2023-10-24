@@ -45,7 +45,7 @@ Flags:
       --auth-password string          authentication password
       --auth-username string          authentication username
       --conn-target string            force connection to be done with a specific IP:port (i.e. 127.0.0.1:8080)
-      --cookie stringArray            add one or more cookies, in the form name=value
+      --cookie string                 add one or more cookies, in the form name=value
   -c, --count int                     define the number of request to be sent (default unlimited)
       --detect-versions               detect HTTP protocol versions available on target
       --disable-compression           the client will not request the remote server to compress answers (hence it might actually do it)
@@ -55,8 +55,8 @@ Flags:
   -d, --dns-server string             specify an alternate DNS server for resolutions
   -x, --extra-parameter               extra changing parameter, add an extra changing parameter to the request to avoid being cached by reverse proxy
   -F, --follow-redirects              follow HTTP redirects (codes 3xx)
-  -H, --head                          perform HTTP HEAD requests instead of GETs
-      --header stringArray            add one or more header, in the form name=value
+      --head                          perform HTTP HEAD requests instead of GETs
+  -H, --header string                 add one or more header, in the form "name: value"
   -h, --help                          help for http-ping
   -1, --http1                         use the HTTP/1 protocol
   -2, --http2                         use the HTTP/2 protocol
@@ -68,7 +68,7 @@ Flags:
       --keep-cookies                  keep received cookies between requests
       --method string                 select a which HTTP method to be used (default "GET")
       --no-server-error               ignore server errors (5xx), do not handle them as "lost pings"
-      --parameter stringArray         add one or more parameters to the query, in the form name:value
+      --parameter string              add one or more parameters to the query, in the form name:value
   -q, --quiet                         print less details
       --referrer string               define the referrer
   -t, --throughput                    log the number of requests done per second

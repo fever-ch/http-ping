@@ -27,6 +27,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,21 @@ import (
 func Execute() {
 	rootCmd := prepareRootCmd(app.NewHTTPPing)
 	cobra.CheckErr(rootCmd.Execute())
+}
+
+type stringArrayValue []string
+
+func (s *stringArrayValue) String() string {
+	return strings.Join(*s, ",")
+}
+
+func (s *stringArrayValue) Set(val string) error {
+	*s = append(*s, val)
+	return nil
+}
+
+func (s *stringArrayValue) Type() string {
+	return "string"
 }
 
 // extraConfig are config items that are triggered by cobra, but which are not part of the config of HTTPPing, these
@@ -46,11 +62,11 @@ type extraConfig struct {
 
 	quiet, verbose bool
 
-	cookies []string
+	cookies stringArrayValue
 
-	headers []string
+	headers stringArrayValue
 
-	parameters []string
+	parameters stringArrayValue
 }
 
 type runner struct {
@@ -202,12 +218,13 @@ func (runner *runner) loadRest() error {
 }
 
 func splitPair(str string) (string, string, error) {
-	r := regexp.MustCompile("^([[:alnum:]]+)=(.*)$")
+	println(str)
+	r := regexp.MustCompile("^([^:]+):\\s?(.*)$")
 	e := r.FindStringSubmatch(str)
 	if len(e) == 3 {
 		return e[1], e[2], nil
 	}
-	return "", "", fmt.Errorf("format should be \"key=value\", where key is a non-empty string of alphanumberic characters and value any string, illegal format: \"%s\"", str)
+	return "", "", fmt.Errorf("format should be \"key: value\", where key is a non-empty string of alphanumberic characters and value any string, illegal format: \"%s\"", str)
 }
 
 func runAndError(config *app.Config, xp *extraConfig, appLogic func(config *app.Config, consoleLogger app.ConsoleLogger) (app.HTTPPing, error)) func(cmd *cobra.Command, args []string) error {
@@ -243,7 +260,7 @@ func prepareRootCmd(appLogic func(config *app.Config, consoleLogger app.ConsoleL
 
 	rootCmd.Flags().StringVarP(&config.Method, "method", "", http.MethodGet, "select a which HTTP method to be used")
 
-	rootCmd.Flags().BoolVarP(&xp.head, "head", "H", false, "perform HTTP HEAD requests instead of GETs")
+	rootCmd.Flags().BoolVarP(&xp.head, "head", "", false, "perform HTTP HEAD requests instead of GETs")
 
 	rootCmd.Flags().BoolVarP(&xp.ipv4, "ipv4", "4", false, "force IPv4 resolution for dual-stacked sites")
 
@@ -265,11 +282,11 @@ func prepareRootCmd(appLogic func(config *app.Config, consoleLogger app.ConsoleL
 
 	rootCmd.Flags().BoolVarP(&config.NoCheckCertificate, "insecure", "k", false, "allow insecure server connections when using SSL")
 
-	rootCmd.Flags().StringArrayVarP(&xp.cookies, "cookie", "", []string{}, "add one or more cookies, in the form name=value")
+	rootCmd.Flags().VarP(&xp.cookies, "cookie", "", "add one or more cookies, in the form name=value")
 
-	rootCmd.Flags().StringArrayVarP(&xp.headers, "header", "", []string{}, "add one or more header, in the form name=value")
+	rootCmd.Flags().VarP(&xp.headers, "header", "H", "add one or more header, in the form \"name: value\"")
 
-	rootCmd.Flags().StringArrayVarP(&xp.parameters, "parameter", "", []string{}, "add one or more parameters to the query, in the form name:value")
+	rootCmd.Flags().VarP(&xp.parameters, "parameter", "", "add one or more parameters to the query, in the form name:value")
 
 	rootCmd.Flags().BoolVarP(&config.IgnoreServerErrors, "no-server-error", "", false, "ignore server errors (5xx), do not handle them as \"lost pings\"")
 
