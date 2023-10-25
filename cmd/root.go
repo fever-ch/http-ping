@@ -218,7 +218,6 @@ func (runner *runner) loadRest() error {
 }
 
 func splitPair(str string) (string, string, error) {
-	println(str)
 	r := regexp.MustCompile("^([^:]+):\\s?(.*)$")
 	e := r.FindStringSubmatch(str)
 	if len(e) == 3 {
