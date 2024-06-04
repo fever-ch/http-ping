@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	github.com/StackExchange/wmi v1.2.1
-	github.com/domainr/dnsr v0.0.0-20231023131843-34b3bf3b41a0
+	github.com/domainr/dnsr v0.0.0-20231025081925-5d1f41c937ba
 	github.com/miekg/dns v1.1.56
-	github.com/quic-go/quic-go v0.39.1
+	github.com/quic-go/quic-go v0.39.2
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.17.0
@@ -19,7 +19,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.13.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-20 v0.4.0 // indirect
+	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	go.uber.org/mock v0.3.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect

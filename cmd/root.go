@@ -26,6 +26,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -164,10 +165,15 @@ func (runner *runner) loadDNS() error {
 		return errors.New("DNS server cannot specified when full DNS resolutions is enabled")
 	}
 
-	if runner.config.DNSServer != "" && net.ParseIP(runner.config.DNSServer) == nil {
-		return errors.New("DNS server should be an IPv4 or IPv6 address")
+	if runner.config.DNSServer == "" || net.ParseIP(runner.config.DNSServer) != nil {
+		return nil
 	}
-	return nil
+
+	_, err := url.Parse(runner.config.DNSServer)
+	if err == nil {
+		return nil
+	}
+	return errors.New("DNS server should be an IPv4 address, IPv6 address, or an URL")
 }
 
 func (runner *runner) loadRest() error {
@@ -309,7 +315,7 @@ func prepareRootCmd(appLogic func(config *app.Config, consoleLogger app.ConsoleL
 
 	rootCmd.Flags().BoolVarP(&config.FullDNS, "dns-full-resolution", "D", false, "enable full DNS resolution from the root servers")
 
-	rootCmd.Flags().StringVarP(&config.DNSServer, "dns-server", "d", "", "specify an alternate DNS server for resolutions")
+	rootCmd.Flags().StringVarP(&config.DNSServer, "dns-server", "d", "", "specify an alternate DNS server for resolutions (URL for DoH)")
 
 	rootCmd.Flags().BoolVarP(&config.CacheDNSRequests, "dns-cache", "", false, "cache DNS requests")
 

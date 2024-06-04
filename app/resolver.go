@@ -17,10 +17,14 @@
 package app
 
 import (
+	"bytes"
+	"encoding/base64"
+	dns2 "fever.ch/http-ping/net/dns"
 	"fmt"
 	"github.com/domainr/dnsr"
 	"github.com/miekg/dns"
 	"net"
+	"net/http"
 	"strings"
 )
 
@@ -51,7 +55,7 @@ func (resolver *resolver) resolveConn(addr string) (string, error) {
 	}
 }
 
-func resolveWithSpecificServerQtype(qtype uint16, server string, host string) ([]*net.IP, error) {
+func resolveWithSpecificServerQtypes(server string, host string, qtypes []uint16) ([]*net.IP, error) {
 	var ips []*net.IP
 
 	msg := new(dns.Msg)
@@ -59,7 +63,9 @@ func resolveWithSpecificServerQtype(qtype uint16, server string, host string) ([
 	msg.RecursionDesired = true
 	msg.Question = []dns.Question{}
 
-	msg.Question = append(msg.Question, dns.Question{Name: host, Qtype: qtype, Qclass: dns.ClassINET})
+	for _, qtype := range qtypes {
+		msg.Question = append(msg.Question, dns.Question{Name: host, Qtype: qtype, Qclass: dns.ClassINET})
+	}
 
 	c := new(dns.Client)
 
@@ -80,46 +86,12 @@ func resolveWithSpecificServerQtype(qtype uint16, server string, host string) ([
 }
 
 func resolveWithSpecificServer(network, server string, host string) ([]*net.IP, error) {
-	type resolveAnswer struct {
-		ip    []*net.IP
-		err   error
-		qtype uint16
-	}
-
 	if network == "ip4" {
-		return resolveWithSpecificServerQtype(dns.TypeA, server, host)
+		return resolveWithSpecificServerQtypes(server, host, []uint16{dns.TypeA})
 	} else if network == "ip6" {
-		return resolveWithSpecificServerQtype(dns.TypeAAAA, server, host)
+		return resolveWithSpecificServerQtypes(server, host, []uint16{dns.TypeAAAA})
 	} else {
-		var ipv4Address []*net.IP
-
-		answersChan := make(chan *resolveAnswer)
-
-		ret := func(qtype uint16) {
-			out, err := resolveWithSpecificServerQtype(qtype, server, host)
-
-			answersChan <- &resolveAnswer{out, err, qtype}
-		}
-
-		go ret(dns.TypeAAAA)
-		go ret(dns.TypeA)
-
-		for i := 0; i < 2; i++ {
-			if answer := <-answersChan; answer.err == nil && len(answer.ip) > 0 {
-
-				if answer.qtype == dns.TypeAAAA {
-					return answer.ip, nil
-				}
-
-				ipv4Address = append(ipv4Address, answer.ip...)
-			}
-
-		}
-
-		if ipv4Address == nil {
-			return nil, noSuchHostError(host)
-		}
-		return ipv4Address, nil
+		return resolveWithSpecificServerQtypes(server, host, []uint16{dns.TypeAAAA, dns.TypeA})
 	}
 }
 
@@ -157,8 +129,17 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 			return nil, noSuchHostError(addr)
 		}
 		return &net.IPAddr{IP: ip}, nil
-	} else if resolver.config.DNSServer != "" {
-		ip, err := resolveWithSpecificServer(resolver.config.IPProtocol, resolver.config.DNSServer, fmt.Sprintf("%s.", addr))
+	} else {
+		server := resolver.config.DNSServer
+		if server == "" {
+			hostServers, err := dns2.GetDNSServers()
+			if err != nil {
+				return nil, err
+			}
+			server = hostServers[0]
+		}
+
+		ip, err := resolveWithSpecificServer(resolver.config.IPProtocol, server, fmt.Sprintf("%s.", addr))
 		if err != nil {
 			return nil, err
 		}
@@ -168,8 +149,6 @@ func (resolver *resolver) actualResolve(addr string) (*net.IPAddr, error) {
 		}
 
 		return &net.IPAddr{IP: *ip[0]}, nil
-	} else {
-		return net.ResolveIPAddr(resolver.config.IPProtocol, addr)
 	}
 }
 
@@ -202,9 +181,94 @@ func (resolver *resolver) resolveRecu(host string, qtypes []string) (*string, er
 		}
 	}
 
-	for cname := range cnames {
+	for cname := range cnames { // todo will leave athe first one
 		return resolver.resolveRecu(cname, qtypes)
 	}
 
 	return nil, fmt.Errorf("no host found: %s", host)
 }
+
+func (resolver *resolver) resolveRecuZ(host string, qtypes []string) (*string, error) {
+
+	cnames := make(map[string]struct{})
+	for _, qtype := range qtypes {
+		for _, rr := range resolver.dnsResolver.Resolve(host, qtype) {
+			if rr.Type == qtype {
+				return &rr.Value, nil
+			} else if rr.Type == "CNAME" {
+				cnames[rr.Value] = struct{}{}
+			}
+		}
+	}
+
+	for cname := range cnames { // todo will leave athe first one
+		return resolver.resolveRecu(cname, qtypes)
+	}
+
+	return nil, fmt.Errorf("no host found: %s", host)
+}
+
+type BackendResolver interface {
+	Resolve(host string, qtype []uint16) (*dns.Msg, error)
+}
+
+func NewDoHResolver(url string) BackendResolver {
+	return &DoHResolver{doHEndpoint: url}
+}
+
+type DoHResolver struct {
+	doHEndpoint string
+}
+
+func (dohResolver *DoHResolver) Resolve(host string, qtypes []uint16) (*dns.Msg, error) {
+
+	msg := new(dns.Msg)
+	for _, qtype := range qtypes {
+		msg.Question = append(msg.Question, dns.Question{Name: dns.Fqdn(host), Qtype: qtype})
+		// shall i add  Qclass: dns.ClassINET?
+	}
+
+	// Convert the DNS message to wire format
+	wireMsg, err := msg.Pack()
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the wire format message to base64 URL encoding
+	encodedMsg := base64.RawURLEncoding.EncodeToString(wireMsg)
+
+	// Create the DoH request
+	req, err := http.NewRequest("GET", dohResolver.doHEndpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := req.URL.Query()
+	q.Add("dns", encodedMsg)
+	req.URL.RawQuery = q.Encode()
+	req.Header.Set("accept", "application/dns-message")
+
+	// Execute the request
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read and unpack the response
+	respMsg := new(dns.Msg)
+	respBody := new(bytes.Buffer)
+	_, err = respBody.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	err = respMsg.Unpack(respBody.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	// Parse the response for TLSA records
+	return respMsg, nil
+}
+
+//  https://cloudflare-dns.com/dns-query
+//  https://dns.google/dns-query
