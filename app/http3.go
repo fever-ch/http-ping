@@ -68,7 +68,7 @@ func newHTTP3RoundTripper(config *Config, runtimeConfig *RuntimeConfig, w *webCl
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: config.NoCheckCertificate,
 		},
-		QuicConfig: &(quic.Config{}),
+		QUICConfig: &(quic.Config{}),
 	}, nil
 }
 

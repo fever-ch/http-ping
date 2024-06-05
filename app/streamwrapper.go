@@ -83,20 +83,20 @@ func (earlyConnectionWrapper *earlyConnectionWrapper) ConnectionState() quic.Con
 	return earlyConnectionWrapper.ec.ConnectionState()
 }
 
-func (earlyConnectionWrapper *earlyConnectionWrapper) SendMessage(bytes []byte) error {
-	return earlyConnectionWrapper.ec.SendMessage(bytes)
+func (earlyConnectionWrapper *earlyConnectionWrapper) SendDatagram(bytes []byte) error {
+	return earlyConnectionWrapper.ec.SendDatagram(bytes)
 }
 
-func (earlyConnectionWrapper *earlyConnectionWrapper) ReceiveMessage(context context.Context) ([]byte, error) {
-	return earlyConnectionWrapper.ec.ReceiveMessage(context)
+func (earlyConnectionWrapper *earlyConnectionWrapper) ReceiveDatagram(context context.Context) ([]byte, error) {
+	return earlyConnectionWrapper.ec.ReceiveDatagram(context)
 }
 
 func (earlyConnectionWrapper *earlyConnectionWrapper) HandshakeComplete() <-chan struct{} {
 	return earlyConnectionWrapper.ec.HandshakeComplete()
 }
 
-func (earlyConnectionWrapper *earlyConnectionWrapper) NextConnection() quic.Connection {
-	return earlyConnectionWrapper.ec.NextConnection()
+func (earlyConnectionWrapper *earlyConnectionWrapper) NextConnection(ctx context.Context) (quic.Connection, error) {
+	return earlyConnectionWrapper.ec.NextConnection(ctx)
 }
 
 type streamWrapper struct {
