@@ -224,7 +224,7 @@ func (runner *runner) loadRest() error {
 }
 
 func splitPair(str string) (string, string, error) {
-	r := regexp.MustCompile("^([^:]+):\\s?(.*)$")
+	r := regexp.MustCompile(`^([^:]+):\\s?(.*)$`)
 	e := r.FindStringSubmatch(str)
 	if len(e) == 3 {
 		return e[1], e[2], nil
@@ -233,7 +233,6 @@ func splitPair(str string) (string, string, error) {
 }
 
 func runAndError(config *app.Config, xp *extraConfig, appLogic func(config *app.Config, consoleLogger app.ConsoleLogger) (app.HTTPPing, error)) func(cmd *cobra.Command, args []string) error {
-
 	return func(cmd *cobra.Command, args []string) error {
 		r := runner{appLogic: appLogic, config: config, xp: xp, cmd: cmd, args: args}
 		return r.run()

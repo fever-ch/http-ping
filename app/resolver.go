@@ -188,26 +188,6 @@ func (resolver *resolver) resolveRecu(host string, qtypes []string) (*string, er
 	return nil, fmt.Errorf("no host found: %s", host)
 }
 
-func (resolver *resolver) resolveRecuZ(host string, qtypes []string) (*string, error) {
-
-	cnames := make(map[string]struct{})
-	for _, qtype := range qtypes {
-		for _, rr := range resolver.dnsResolver.Resolve(host, qtype) {
-			if rr.Type == qtype {
-				return &rr.Value, nil
-			} else if rr.Type == "CNAME" {
-				cnames[rr.Value] = struct{}{}
-			}
-		}
-	}
-
-	for cname := range cnames { // todo will leave athe first one
-		return resolver.resolveRecu(cname, qtypes)
-	}
-
-	return nil, fmt.Errorf("no host found: %s", host)
-}
-
 type BackendResolver interface {
 	Resolve(host string, qtype []uint16) (*dns.Msg, error)
 }
