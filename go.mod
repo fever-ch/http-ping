@@ -3,12 +3,12 @@ module fever.ch/http-ping
 go 1.21
 
 require (
-	github.com/StackExchange/wmi v1.2.1
 	github.com/domainr/dnsr v0.0.0-20240529081938-232f10602667
 	github.com/miekg/dns v1.1.59
 	github.com/quic-go/quic-go v0.45.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
+	github.com/yusufpapurcu/wmi v1.2.4
 	golang.org/x/net v0.26.0
 )
 

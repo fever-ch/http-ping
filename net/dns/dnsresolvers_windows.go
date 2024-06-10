@@ -21,7 +21,7 @@ package dns
 import (
 	"log"
 
-	wmi "github.com/StackExchange/wmi"
+	wmi "github.com/yusufpapurcu/wmi"
 )
 
 type Win32_NetworkAdapterConfiguration struct {
